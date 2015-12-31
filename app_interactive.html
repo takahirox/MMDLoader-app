@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>THREE.MMDLoader sample - intaractive</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #fff;
+				color: #000;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				color: #000;
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				text-align: right;
+				right: 20px;
+				z-index: 100;
+				display: block;
+			}
+			#info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
+		</style>
+	</head>
+
+	<body>
+		<div id="info">
+		<a href="https://github.com/takahirox/three.js" target="_blank">MMDLoader</a><br />
+		Interactive app<br />
+		<br />
+		Copyright<br />
+		<a href="http://threejs.org" target="_blank">three.js</a><br />
+		<a href="http://www.geocities.jp/higuchuu4/index_e.htm" target="_blank">Model Data</a><br />
+		<a href="http://nicomas.main.jp/mmddata/" target="_blank">Motion Data</a><br />
+		</div>
+
+		<script src="three.js/three.min.js"></script>
+
+		<script src="libs/charsetencoder.min.js"></script>
+		<script src="libs/ammo.js"></script>
+		<script src="three.js/TGALoader.js"></script>
+		<script src="three.js/MMDLoader.js"></script>
+		<script src="three.js/CCDIKSolver.js"></script>
+		<script src="three.js/MMDPhysics.js"></script>
+
+		<script src="three.js/Detector.js"></script>
+		<script src="libs/stats.min.js"></script>
+
+		<script>
+
+			var container, stats;
+
+			var camera, scene, renderer;
+			var helper, loader;
+			var clickableCubes = [];
+			var eyesSensor;
+
+			var ready = false;
+			var debug = false;
+
+			var mouseX = 0, mouseY = 0;
+
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+
+			var clock = new THREE.Clock();
+
+			var boneDictionary = {};
+			var modelDictionary = {};
+			var motionDictionary = {};
+			var clickableCubeDictionary = {};
+
+			var motionStatus = {
+				inAnimation: false,
+				elapsedTime: 0.0,
+				duration: 0.0,
+				name: '',
+				index: 0
+			};
+
+			var modelParams = [
+				{
+					name: 'miku',
+					file: 'model/miku/miku_v2.pmd',
+					position: new THREE.Vector3( 0, -15,  0 )
+				}
+			];
+
+			var blinkMorphName = 'まばたき';
+			var headBoneName = '頭';
+			var eyesParam = {
+				boneName: '左目',
+				offset: new THREE.Vector3( -0.4, 0, 0 )
+			};
+
+			var motionParams = [
+				{
+					name: 'bow',
+					motions: [
+						{
+							files: [ 'vmd/imas/azusa_bow1.vmd', 'vmd/imas/mouth1.vmd', 'vmd/imas/face23.vmd' ]
+						},
+						{
+							files: [ 'vmd/imas/azusa_bow2.vmd', 'vmd/imas/face23.vmd' ]
+						}
+					]
+				},
+				{
+					name: 'hair',
+					motions: [
+						{
+							files: [ 'vmd/imas/makoto_hair.vmd', 'vmd/imas/face23.vmd' ]
+						}
+					]
+				},
+				{
+					name: 'mouth',
+					motions: [
+						{
+							files: [ 'vmd/imas/yukiho_mouth1.vmd', 'vmd/imas/mouth1.vmd', 'vmd/imas/face23.vmd' ]
+						},
+						{
+							files: [ 'vmd/imas/yukiho_mouth2.vmd', 'vmd/imas/face23.vmd' ]
+						}
+					]
+				},
+				{
+					name: 'rise_right_hand',
+					motions: [
+						{
+							files: [ 'vmd/imas/yayoi_right_hand_rise1.vmd', 'vmd/imas/mouth1.vmd', 'vmd/imas/face24.vmd' ]
+						},
+						{
+							files: [ 'vmd/imas/yayoi_right_hand_rise2.vmd', 'vmd/imas/face24.vmd' ]
+						}
+					]
+				},
+				{
+					name: 'left_hand',
+					motions: [
+						{
+							files: [ 'vmd/imas/ritsuko_left_hand1.vmd', 'vmd/imas/mouth1.vmd', 'vmd/imas/face24.vmd' ]
+						},
+						{
+							files: [ 'vmd/imas/ritsuko_left_hand2.vmd', 'vmd/imas/face24.vmd' ]
+						}
+					]
+				},				{
+					name: 'surprise',
+					motions: [
+						{
+							files: [ 'vmd/imas/makoto_surprise1.vmd', 'vmd/imas/mouth1.vmd', 'vmd/imas/face16.vmd' ]
+						},
+						{
+							files: [ 'vmd/imas/makoto_surprise2.vmd', 'vmd/imas/face16.vmd' ]
+						}
+					]
+				},
+				{
+					name: 'guard',
+					motions: [
+						{
+							files: [ 'vmd/imas/makoto_guard1.vmd', 'vmd/imas/mouth1.vmd', 'vmd/imas/face22.vmd' ]
+						},
+						{
+							files: [ 'vmd/imas/makoto_guard2.vmd', 'vmd/imas/face22.vmd' ]
+						}
+					]
+				}
+			];
+
+			var clickableCubeParams = [
+				{
+					name: 'hair',
+					width: 4.0,
+					height: 2.0,
+					depth: 2.5,
+					boneName: '頭',
+					offset: new THREE.Vector3( 0.0, 2.0, 0.0 ),
+					motionName: 'hair'
+				},
+				{
+					name: 'mouth',
+					width: 1.5,
+					height: 1.0,
+					depth: 2.0,
+					boneName: '左目',
+					offset: new THREE.Vector3( -0.4, -0.7, 0.0 ),
+					motionName: 'mouth'
+				},
+				{
+					name: 'tits',
+					width: 2.0,
+					height: 1.8,
+					depth: 1.5,
+					boneName: '上半身',
+					offset: new THREE.Vector3( 0.0, 1.5, 0.0 ),
+					motionName: 'surprise'
+				},
+				{
+					name: 'right_hand',
+					width: 1.0,
+					height: 2.5,
+					depth: 1.5,
+					boneName: '右手首',
+					offset: new THREE.Vector3( 0.0, -0.5, 0.0 ),
+					motionName: 'rise_right_hand'
+				},
+				{
+					name: 'left_hand',
+					width: 1.0,
+					height: 2.5,
+					depth: 1.5,
+					boneName: '左手首',
+					offset: new THREE.Vector3( 0.0, -0.5, 0.0 ),
+					motionName: 'left_hand'
+				},
+				{
+					name: 'thigh',
+					width: 3.0,
+					height: 3.0,
+					depth: 3.0,
+					boneName: 'センター',
+					offset: new THREE.Vector3( 0.0, 2.5, 0.0 ),
+					motionName: 'guard'
+				}
+			];
+
+			var blinkVmd = {
+				metadata: {
+					name: 'blink',
+					coordinateSystem: 'right',
+					morphCount: 11,
+					cameraCount: 0,
+					motionCount: 0
+				},
+				morphs: [
+					{ frameNum:   0, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  10, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  15, morphName: blinkMorphName, weight: 1.0 },
+					{ frameNum:  20, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  40, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  43, morphName: blinkMorphName, weight: 1.0 },
+					{ frameNum:  46, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  49, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  52, morphName: blinkMorphName, weight: 1.0 },
+					{ frameNum:  55, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum: 200, morphName: blinkMorphName, weight: 0.0 },
+				],
+				cameras: [],
+				motions: []
+			};
+
+			var onProgress = function ( xhr ) {
+				if ( xhr.lengthComputable ) {
+					var percentComplete = xhr.loaded / xhr.total * 100;
+					console.log( Math.round(percentComplete, 2) + '% downloaded' );
+				}
+			};
+
+			var onError = function ( xhr ) {
+			};
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+				camera.position.z = 18;
+
+				// scene
+
+				scene = new THREE.Scene();
+
+				var ambient = new THREE.AmbientLight( 0x666666 );
+				scene.add( ambient );
+
+				var directionalLight = new THREE.DirectionalLight( 0x887766 );
+				directionalLight.position.set( -1, 1, 1 ).normalize();
+				scene.add( directionalLight );
+
+				//
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setClearColor( new THREE.Color( 0xffffff ) );
+				container.appendChild( renderer.domElement );
+
+				// model
+
+				helper = new THREE.MMDHelper( renderer );
+
+				loader = new THREE.MMDLoader();
+				loader.setDefaultTexturePath( './default/' );
+
+				loadModels( function () {
+
+					var mesh = helper.meshes[ 0 ];
+
+					loadVmds( mesh, function () {
+
+						removeBlinkFromMorphAnimations( mesh );
+
+						loader.pourVmdIntoModel( mesh, blinkVmd, 'blink' );
+
+						helper.setAnimation( mesh );
+
+						for ( var i = 0; i < motionParams.length; i++ ) {
+
+							var param = motionParams[ i ];
+
+							for ( var j = 0; j < param.motions.length; j++ ) {
+
+								var name = param.name + j;
+
+								mesh.mixer.clipAction( name ).stop();
+								mesh.mixer.clipAction( name + 'Morph' ).stop();
+								mesh.mixer.clipAction( name ).loop = THREE.LoopOnce;
+								//mesh.mixer.clipAction( name + 'Morph' ).loop = THREE.LoopOnce;
+								mesh.mixer.clipAction( name ).clampWhenFinished = true;
+
+							}
+
+						}
+
+						createDictionary( mesh );
+						generateEyesSensor( mesh );
+						generateClickableCubes( mesh );
+
+						startBlink( mesh );
+						startMotion( mesh, 'bow' );
+
+						ready = true;
+
+					} );
+
+				} );
+
+				document.addEventListener( 'click', onMouseClick, false );
+				document.addEventListener( 'mousemove', onMouseMove, false );
+				document.addEventListener( 'touchstart', onTouchStart, false );
+				document.addEventListener( 'touchmove', onTouchMove, false );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function loadModels ( callback ) {
+
+				function load ( index ) {
+
+					if ( index >= modelParams.length ) {
+
+						callback();
+						return;
+
+					}
+
+					var param = modelParams[ index ];
+
+					loader.loadModel( param.file, function ( object ) {
+
+						var mesh = object;
+						mesh.position.copy( param.position );
+
+						helper.add( mesh );
+
+						/*
+						 * Note: You must set Physics
+						 *       before you add mesh to scene or any other 3D object.
+						 * Note: Physics calculation is pretty heavy.
+						 *       It may not be acceptable for most mobile devices yet.
+				 		 */
+						if ( ! isMobileDevice() ) {
+
+							helper.setPhysics( mesh );
+
+						}
+
+						scene.add( mesh );
+
+						load( index + 1 );
+
+					}, onProgress, onError );
+
+				}
+
+				load( 0 );
+
+			}
+
+			function loadVmds ( mesh, callback ) {
+
+				function load ( paramIndex, motionIndex ) {
+
+					if ( paramIndex >= motionParams.length ) {
+
+						callback();
+						return;
+
+					}
+
+					var param = motionParams[ paramIndex ];
+
+					loader.loadVmds( param.motions[ motionIndex ].files, function ( vmd ) {
+
+						loader.pourVmdIntoModel( mesh, vmd, param.name + motionIndex );
+
+						motionIndex++;
+
+						if ( motionIndex >= param.motions.length ) {
+
+							paramIndex++;
+							motionIndex = 0;
+
+						}
+
+						load( paramIndex, motionIndex );
+
+					}, onProgress, onError );
+
+				}
+
+				load( 0, 0 );
+
+			}
+
+			function createDictionary ( mesh ) {
+
+				var bones = mesh.skeleton.bones;
+
+				for ( var i = 0; i < bones.length; i++ ) {
+
+					var b = bones[ i ];
+					boneDictionary[ b.originalName ] = i;
+
+				}
+
+				for ( var i = 0; i < clickableCubeParams.length; i++ ) {
+
+					var p = clickableCubeParams[ i ];
+					clickableCubeDictionary[ p.name ] = i;
+
+				}
+
+				for ( var i = 0; i < motionParams.length; i++ ) {
+
+					var p = motionParams[ i ];
+					motionDictionary[ p.name ] = i;
+
+				}
+
+			}
+
+			function generateEyesSensor ( mesh ) {
+
+				var p = eyesParam;
+
+				var opacity = 0.2;
+
+				var geometry = new THREE.BoxGeometry( 1, 1, 3 );
+				var material = new THREE.MeshBasicMaterial( { color: 0x008888, transparent: true, opacity: opacity } );
+				var cube = new THREE.Mesh( geometry, material );
+				cube.name = 'eyes';
+				letObjectInvisible( cube );
+
+				if ( p.offset !== undefined ) {
+
+					cube.position.add( p.offset );
+
+				}
+
+				mesh.skeleton.bones[ boneDictionary[ p.boneName ] ].add( cube );
+
+				eyesSensor = cube;
+
+			}
+
+			function generateClickableCubes ( mesh ) {
+
+				for ( var i = 0; i < clickableCubeParams.length; i++ ) {
+
+					var p = clickableCubeParams[ i ];
+
+					var width = p.width !== undefined ? p.width : 1.0;
+					var height = p.height !== undefined ? p.height : 1.0;
+					var depth = p.depth !== undefined ? p.depth : 1.0;
+					var opacity = 0.2;
+
+					var geometry = new THREE.BoxGeometry( width, height, depth );
+					var material = new THREE.MeshBasicMaterial( { color: 0x888888, transparent: true, opacity: opacity } );
+					var cube = new THREE.Mesh( geometry, material );
+					cube.name = p.name;
+					letObjectInvisible( cube );
+
+					if ( p.offset !== undefined ) {
+
+						cube.position.add( p.offset );
+
+					}
+
+					mesh.skeleton.bones[ boneDictionary[ p.boneName ] ].add( cube );
+
+					clickableCubes.push( cube );
+
+				}
+
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+				render();
+
+			}
+
+			function render() {
+
+				if ( ready ) {
+
+					var delta = clock.getDelta();
+					manageAnimation( delta );
+					helper.animate( delta );
+					helper.render( scene, camera );
+
+				} else {
+
+					renderer.clear();
+					renderer.render( scene, camera );
+
+				}
+
+			}
+
+			// easy mobile device detection
+			function isMobileDevice () {
+
+				if ( navigator === undefined || navigator.userAgent === undefined ) {
+
+					return true;
+
+				}
+
+				var s = navigator.userAgent;
+
+				if (    s.match( /iPhone/i )
+//				     || s.match( /iPad/i )
+				     || s.match( /iPod/i )
+				     || s.match( /webOS/i )
+				     || s.match( /BlackBerry/i )
+				     || ( s.match( /Windows/i ) && s.match( /Phone/i ) )
+				     || ( s.match( /Android/i ) && s.match( /Mobile/i ) ) ) {
+
+					return true;
+
+				}
+
+				return false;
+
+			}
+
+			function letModelLookAtMouse () {
+
+				if ( ready === false ) {
+
+					return;
+
+				}
+
+				var mesh = helper.meshes[ 0 ];
+
+				// this parameter is heuristic.
+				// you may need to adjust depending on model, camera, and etc.
+				var pos = new THREE.Vector3( mouseX * 640,
+				                             mouseY * 480,
+				                             -camera.position.z * 2 );
+
+				pos.unproject( camera );
+
+				var bone = eyesSensor; //mesh.skeleton.bones[ 94 ];
+
+				pos.sub( bone.getWorldPosition() );
+
+				mesh.skeleton.bones[ boneDictionary[ headBoneName ] ].lookAt( pos );
+
+			}
+
+			function startMotion ( mesh, key, index ) {
+
+				if ( motionStatus.name !== '' ) {
+
+					stopMotion( motionStatus.name );
+
+				}
+
+				if ( index === undefined ) {
+
+					index = 0;
+
+				}
+
+				motionStatus.name = key;
+				motionStatus.elapsedTime = 0.0;
+				motionStatus.inAnimation = true;
+				motionStatus.index = index;
+
+				var name = key + motionStatus.index;
+				mesh.mixer.clipAction( name ).play();
+				mesh.mixer.clipAction( name + 'Morph' ).play();
+				motionStatus.duration = mesh.mixer.clipAction( name )._clip.duration;
+
+			}
+
+			function stopMotion ( key ) {
+
+				var name = key + motionStatus.index;
+
+				motionStatus.name = '';
+				motionStatus.elapsedTime = 0.0;
+				motionStatus.duration = 0.0;
+				motionStatus.inAnimation = false;
+				motionStatus.index = 0;
+
+				var mesh = helper.meshes[ 0 ];
+				mesh.mixer.clipAction( name ).stop();
+				mesh.mixer.clipAction( name + 'Morph' ).stop();
+
+			}
+
+			function startBlink ( mesh ) {
+
+				mesh.mixer.clipAction( 'blinkMorph' ).play();
+
+			}
+
+			function stopBlink ( mesh ) {
+
+				mesh.mixer.clipAction( 'blinkMorph' ).stop();
+
+			}
+
+			function removeBlinkFromMorphAnimations ( mesh ) {
+
+				var index = mesh.morphTargetDictionary[ blinkMorphName ];
+
+				if ( index === undefined ) {
+
+					return;
+
+				}
+
+				for ( var i = 0; i < mesh.geometry.morphAnimations.length; i++ ) {
+
+					mesh.geometry.morphAnimations[ i ].tracks.splice( index, 1 );
+
+				}
+
+			}
+
+			function manageAnimation ( delta ) {
+
+				if ( motionStatus.inAnimation === false ) {
+
+					return;
+
+				}
+
+				var mesh = helper.meshes[ 0 ];
+				var p = motionParams[ motionDictionary[ motionStatus.name ] ];
+
+				motionStatus.elapsedTime += delta;
+
+				if ( motionStatus.elapsedTime > motionStatus.duration ) {
+
+					if ( motionStatus.index + 1 < p.motions.length ) {
+
+						startMotion( mesh, motionStatus.name, motionStatus.index + 1 );
+
+					} else {
+
+						motionStatus.inAnimation = false;
+						//stopMotion( mesh, motionStatus.name );
+
+					}
+
+				}
+
+				letModelLookAtMouse();
+
+			}
+
+			function onMouseClick ( e ) {
+
+				if ( e.button !== 0 ) {
+
+					return;
+
+				}
+
+				/*
+				if ( motionStatus.inAnimation === true ) {
+
+					return;
+
+				}
+				*/
+
+				for ( var i = 0; i < clickableCubes.length; i++ ) {
+
+					letObjectVisible( clickableCubes[ i ] );
+
+				}
+
+				var pos = new THREE.Vector3( mouseX, mouseY, 1 );
+				pos.unproject( camera );
+				var ray = new THREE.Raycaster( camera.position, pos.sub( camera.position ).normalize() );
+				var objs = ray.intersectObjects( clickableCubes );
+
+				if ( objs.length > 0 ) {
+
+					var mesh = helper.meshes[ 0 ];
+					var obj = objs[ 0 ];
+					var name = obj.object.name;
+					var p = clickableCubeParams[ clickableCubeDictionary[ name ] ];
+					startMotion( mesh, p.motionName );
+
+				}
+
+				letModelLookAtMouse();
+
+				for ( var i = 0; i < clickableCubes.length; i++ ) {
+
+					letObjectInvisible( clickableCubes[ i ] );
+
+				}
+
+			}
+
+			function onMouseMove ( event ) {
+
+				// make mouseX/Y being between -1.0 and 1.0
+				mouseX =  ( event.clientX / window.innerWidth ) * 2 - 1;
+				mouseY = -( event.clientY / window.innerHeight ) * 2 + 1;
+
+				letModelLookAtMouse();
+
+			}
+
+			function onTouchStart ( event ) {
+
+				// temporal workaround
+				onMouseClick( { button: 0,
+				                clientX: event.changedTouches[ 0 ].clientX,
+				                clientY: event.changedTouches[ 0 ].clientY } );
+
+			}
+
+			function onTouchMove ( event ) {
+
+				// temporal workaround
+				onMouseMove( { clientX: event.changedTouches[ 0 ].clientX,
+				               clientY: event.changedTouches[ 0 ].clientY } );
+
+			}
+
+			function letObjectVisible ( obj ) {
+
+				obj.visible = true;
+
+			}
+
+			function letObjectInvisible ( obj ) {
+
+				if ( ! debug ) {
+
+					obj.visible = false;
+
+				}
+
+			}
+
+		</script>
+
+	</body>
+</html>
