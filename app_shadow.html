@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>THREE.MMDLoader sample - viewer</title>
+		<title>THREE.MMDLoader sample - shadow</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
@@ -29,7 +29,7 @@
 	<body>
 		<div id="info">
 		<a href="https://github.com/takahirox/three.js" target="_blank">MMDLoader</a><br />
-		Viewer app<br />
+		Shadow<br />
 		<br />
 		Copyright
 		<a href="http://threejs.org" target="_blank">three.js</a><br />
@@ -53,7 +53,6 @@
 		<script src="libs/stats.min.js"></script>
 
 		<script>
-
 			var container, stats;
 
 			var mesh, camera, scene, renderer;
@@ -86,7 +85,7 @@
 				scene.add( ambient );
 
 				var directionalLight = new THREE.DirectionalLight( 0x887766 );
-				directionalLight.position.set( -1, 1, 1 ).normalize();
+				directionalLight.position.set( -15, 15, 15 );
 				scene.add( directionalLight );
 
 				//
@@ -96,6 +95,20 @@
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.setClearColor( new THREE.Color( 0xffffff ) );
 				container.appendChild( renderer.domElement );
+
+				// Shadow parameters
+				renderer.shadowMap.enabled = true;
+				directionalLight.castShadow = true;
+				directionalLight.shadow.mapSize.x = 1024;
+				directionalLight.shadow.mapSize.y = 1024;
+				directionalLight.shadow.camera.right = 20;
+				directionalLight.shadow.camera.top = 20;
+				directionalLight.shadow.camera.left = -20;
+				directionalLight.shadow.camera.bottom = -20;
+
+				// Model specific Shadow parameters
+				renderer.shadowMap.cullFace = THREE.CullFaceNone;
+				directionalLight.shadow.bias = -0.001;
 
 				// model
 
@@ -125,6 +138,9 @@
 
 					mesh = object;
 
+					mesh.castShadow = true;
+					mesh.receiveShadow = true;
+
 					helper.add( mesh );
 					helper.setAnimation( mesh );
 
@@ -148,6 +164,8 @@
 						helper.setCameraAnimation( camera );
 
 						loader.loadModel( stageFile, function ( stage ) {
+
+							stage.receiveShadow = true;
 
 							loader.loadAudio( audioFile, function ( audio, listener ) {
 
