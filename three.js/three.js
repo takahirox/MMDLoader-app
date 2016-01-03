@@ -14746,6 +14746,7 @@ THREE.KeyframeTrack.prototype = {
 
 	getValueSize: function() {
 
+		if ( this.times.length === 0 ) return 0;
 		return this.values.length / this.times.length;
 
 	},
@@ -14816,10 +14817,11 @@ THREE.KeyframeTrack.prototype = {
 			var from = firstKeysToRemove;
 			var to = nKeys - lastKeysToRemove - firstKeysToRemove;
 
+			var stride = this.getValueSize();
+
 			this.times = THREE.AnimationUtils.arraySlice( times, from, to );
 
 			var values = this.values;
-			var stride = this.getValueSize();
 			this.values = THREE.AnimationUtils.arraySlice( values, from * stride, to * stride );
 
 		}
@@ -33058,10 +33060,10 @@ THREE.CurveUtils = {
 
 		// To check if my formulas are correct
 
-		var h00 = 6 * t * t - 6 * t; 	// derived from 2t^3 − 3t^2 + 1
-		var h10 = 3 * t * t - 4 * t + 1; // t^3 − 2t^2 + t
-		var h01 = - 6 * t * t + 6 * t; 	// − 2t3 + 3t2
-		var h11 = 3 * t * t - 2 * t;	// t3 − t2
+		var h00 = 6 * t * t - 6 * t; 	// derived from 2t^3 ? 3t^2 + 1
+		var h10 = 3 * t * t - 4 * t + 1; // t^3 ? 2t^2 + t
+		var h01 = - 6 * t * t + 6 * t; 	// ? 2t3 + 3t2
+		var h11 = 3 * t * t - 2 * t;	// t3 ? t2
 
 		return h00 + h10 + h01 + h11;
 

@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>THREE.MMDLoader sample - walk</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #fff;
+				color: #000;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				color: #000;
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				text-align: right;
+				right: 20px;
+				z-index: 100;
+				display: block;
+			}
+			#info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
+			#howtoplay {
+				color: #000;
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				text-align: left;
+				left: 20px;
+				z-index: 100;
+				display: block;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div id="info">
+		<a href="https://github.com/takahirox/three.js" target="_blank">MMDLoader</a><br />
+		Walk<br />
+		<br />
+		Copyright<br />
+		<a href="http://threejs.org" target="_blank">three.js</a><br />
+		<a href="http://www.geocities.jp/higuchuu4/index_e.htm" target="_blank">Model Data</a><br />
+		<a href="http://www.nicovideo.jp/mylist/1713647" target="_blank">Motion Data</a><br />
+		<a href="http://nicomas.main.jp/mmddata/" target="_blank">Motion/Pose Data</a><br />
+		</div>
+
+		<div id="howtoplay">
+		How to play<br />
+		<br />
+		Up : Move forward<br />
+		Left : Rotate left<br />
+		Right : Rotate right<br />
+		Shift : Run<br />
+		Mouse drag/wheel : Camera<br />
+		Space : Reset position<br />
+		</div>
+
+		<script src="three.js/three.js"></script>
+
+		<script src="libs/charsetencoder.min.js"></script>
+		<script src="libs/ammo.js"></script>
+		<script src="three.js/TGALoader.js"></script>
+		<script src="three.js/MMDLoader.js"></script>
+		<script src="three.js/CCDIKSolver.js"></script>
+		<script src="three.js/MMDPhysics.js"></script>
+
+		<script src="three.js/TrackballControls.js"></script>
+		<script src="three.js/Detector.js"></script>
+		<script src="libs/stats.min.js"></script>
+
+		<script>
+
+			var container, stats;
+
+			var camera, scene, renderer;
+			var helper, loader;
+
+			var cameraControls;
+
+			var ready = false;
+
+			var mouseX = 0, mouseY = 0;
+
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+
+			var clock = new THREE.Clock();
+
+			var boneDictionary = {};
+			var modelDictionary = {};
+			var motionDictionary = {};
+
+			var motionStatus = {
+				inWalking: false,
+				inRunning: false,
+				inStartWalking: false,
+				inStartRunning: false,
+				inStopWalking: false,
+				inStopRunning: false,
+				inMovingForward: false,
+				inMovingBackward: false,
+				inRotatingLeft: false,
+				inRotatingRight: false,
+				direction: 0,
+				runFlag: false,
+				duration: 0.0,
+				elapsedTimeSinceStartWalking: 0.0,
+				elapsedTimeSinceStartRunning: 0.0,
+				elapsedTimeSinceStopWalking: 0.0,
+				elapsedTimeSinceStopRunning: 0.0
+			};
+
+			var modelParams = [
+				{
+					name: 'miku',
+					file: 'model/miku/miku_v2.pmd',
+					position: new THREE.Vector3( 0, -15,  0 )
+				}
+			];
+
+			var cameraParams = [
+				{
+					name: 'camera',
+					position: new THREE.Vector3( 0, 0, -25 )
+				}
+			];
+
+			var blinkMorphName = 'まばたき';
+
+			var poseParams = [
+				{
+					name: 'basic',
+					file: 'vpd/imas/makoto_basic.vpd'
+				}
+			];
+
+			var poses = {};
+
+			var motionParams = [
+				{
+					name: 'walk',
+					isMoving: true,
+					files: [ 'vmd/walk/walk.vmd' ]
+				},
+				{
+					name: 'run',
+					isMoving: true,
+					files: [ 'vmd/walk/run.vmd' ]
+				}
+			];
+
+			var blinkVmd = {
+				metadata: {
+					name: 'blink',
+					coordinateSystem: 'right',
+					morphCount: 11,
+					cameraCount: 0,
+					motionCount: 0
+				},
+				morphs: [
+					{ frameNum:   0, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  10, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  15, morphName: blinkMorphName, weight: 1.0 },
+					{ frameNum:  20, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  40, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  43, morphName: blinkMorphName, weight: 1.0 },
+					{ frameNum:  46, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  49, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  52, morphName: blinkMorphName, weight: 1.0 },
+					{ frameNum:  55, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum: 200, morphName: blinkMorphName, weight: 0.0 },
+				],
+				cameras: [],
+				motions: []
+			};
+
+			var onProgress = function ( xhr ) {
+				if ( xhr.lengthComputable ) {
+					var percentComplete = xhr.loaded / xhr.total * 100;
+					console.log( Math.round(percentComplete, 2) + '% downloaded' );
+				}
+			};
+
+			var onError = function ( xhr ) {
+			};
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+				cameraControls = new THREE.TrackballControls( camera );
+
+				// scene
+
+				scene = new THREE.Scene();
+
+				var ambient = new THREE.AmbientLight( 0x666666 );
+				scene.add( ambient );
+
+				var directionalLight = new THREE.DirectionalLight( 0x887766 );
+				directionalLight.position.set( -1, 1, 1 ).normalize();
+				scene.add( directionalLight );
+
+				//
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setClearColor( new THREE.Color( 0xffffff ) );
+				container.appendChild( renderer.domElement );
+
+				camera.lookAt( scene.position, container );
+				resetPosition();
+
+				// model
+
+				createGround();
+
+				helper = new THREE.MMDHelper( renderer );
+
+				loader = new THREE.MMDLoader();
+				loader.setDefaultTexturePath( './default/' );
+
+				loadModels( function () {
+
+					var mesh = helper.meshes[ 0 ];
+
+					loadVpds( mesh, function () {
+
+						helper.poseAsVpd( mesh, poses[ 'basic' ] );
+
+						loadVmds( mesh, function () {
+
+							removeBlinkFromMorphAnimations( mesh );
+
+							loader.pourVmdIntoModel( mesh, blinkVmd, 'blink' );
+
+							helper.setAnimation( mesh );
+
+							for ( var i = 0; i < motionParams.length; i++ ) {
+
+								var param = motionParams[ i ];
+
+								var name = param.name;
+								mesh.mixer.clipAction( name ).weight = 0.0;
+								mesh.mixer.clipAction( name + 'Morph' ).weight = 0.0;
+								startMotion( mesh, name );
+
+							}
+
+							createDictionary( mesh );
+							startBlink( mesh );
+
+							ready = true;
+
+						} );
+
+					} );
+
+				} );
+
+				document.addEventListener( 'keydown', onKeydown, false );
+				document.addEventListener( 'keyup', onKeyup, false );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function loadModels ( callback ) {
+
+				function load ( index ) {
+
+					if ( index >= modelParams.length ) {
+
+						callback();
+						return;
+
+					}
+
+					var param = modelParams[ index ];
+
+					loader.loadModel( param.file, function ( object ) {
+
+						var mesh = object;
+
+						helper.add( mesh );
+
+						/*
+						 * Note: You must set Physics
+						 *       before you add mesh to scene or any other 3D object.
+						 * Note: Physics calculation is pretty heavy.
+						 *       It may not be acceptable for most mobile devices yet.
+				 		 */
+						if ( ! isMobileDevice() ) {
+
+							helper.setPhysics( mesh );
+
+						}
+
+						scene.add( mesh );
+
+						resetPosition();
+
+						load( index + 1 );
+
+					}, onProgress, onError );
+
+				}
+
+				load( 0 );
+
+			}
+
+			function loadVmds ( mesh, callback ) {
+
+				function load ( index ) {
+
+					if ( index >= motionParams.length ) {
+
+						callback();
+						return;
+
+					}
+
+					var param = motionParams[ index ];
+
+					loader.loadVmds( param.files, function ( vmd ) {
+
+						loader.pourVmdIntoModel( mesh, vmd, param.name );
+
+						load( index + 1 );
+
+					}, onProgress, onError );
+
+				}
+
+				load( 0 );
+
+			}
+
+			function loadVpds ( mesh, callback ) {
+
+				function load ( index ) {
+
+					if ( index >= poseParams.length ) {
+
+						callback();
+						return;
+
+					}
+
+					var param = poseParams[ index ];
+
+					loader.loadVpd( param.file, function ( vpd ) {
+
+						poses[ param.name ] = vpd;
+
+						load( index + 1 );
+
+					}, onProgress, onError );
+
+				}
+
+				load( 0 );
+
+			}
+
+			function createDictionary ( mesh ) {
+
+				var bones = mesh.skeleton.bones;
+
+				for ( var i = 0; i < bones.length; i++ ) {
+
+					var b = bones[ i ];
+					boneDictionary[ b.originalName ] = i;
+
+				}
+
+				for ( var i = 0; i < motionParams.length; i++ ) {
+
+					var p = motionParams[ i ];
+					motionDictionary[ p.name ] = i;
+
+				}
+
+			}
+
+			function createGround () {
+
+				var canvasSize = 64;
+				var lineSize = 2;
+
+				var canvas = document.createElement( 'canvas' );
+				canvas.width = canvasSize;
+				canvas.height = canvasSize;
+
+				var ctx = canvas.getContext( '2d' );
+				ctx.fillStyle = 'rgb( 0, 0, 0 )';
+				ctx.fillRect( 0, 0, canvasSize, canvasSize );
+				ctx.fillStyle = 'rgb( 255, 255, 255 )';
+				ctx.fillRect( lineSize, lineSize, canvasSize - lineSize * 2, canvasSize - lineSize * 2 );
+
+				var texture = new THREE.Texture( canvas );
+				texture.wrapS = THREE.RepeatWrapping;
+				texture.wrapT = THREE.RepeatWrapping;
+				texture.needsUpdate = true;
+
+				var geometry = new THREE.PlaneGeometry( 1024, 1024 );
+				geometry.computeFaceNormals();
+				geometry.computeVertexNormals();
+
+				var uvs = geometry.faceVertexUvs[ 0 ];
+
+				for ( var i = 0; i < uvs.length; i++ ) {
+
+					for ( var j = 0; j < uvs[ i ].length; j++ ) {
+
+						var uv = uvs[ i ][ j ];
+
+						uv.x = uv.x === 0.0 ? -64.0 : 64.0;
+						uv.y = uv.y === 0.0 ? -64.0 : 64.0;
+
+					}
+
+				}
+
+				var geometry2 = geometry.clone();
+
+				var ground = new THREE.Mesh(
+					geometry,
+					new THREE.MeshBasicMaterial( {
+						map: texture,
+						side: THREE.FrontSide
+					} )
+				);
+				ground.rotateX( - Math.PI / 2 );
+				ground.position.copy( modelParams[ 0 ].position );
+				scene.add( ground );
+
+				var ground2 = new THREE.Mesh(
+					geometry2,
+					new THREE.MeshBasicMaterial( {
+						map: texture,
+						opacity: 0.25,
+						transparent: true,
+						side: THREE.BackSide
+					} )
+				);
+				ground2.rotateX( -Math.PI / 2 );
+				ground2.position.copy( modelParams[ 0 ].position );
+				scene.add( ground2 );
+
+			}
+
+			function onWindowResize () {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+				render();
+
+			}
+
+			function render() {
+
+				if ( ready ) {
+
+					cameraControls.update();
+
+					var delta = clock.getDelta();
+					manageMove( delta );
+					helper.animate( delta );
+					helper.render( scene, camera );
+
+				} else {
+
+					renderer.clear();
+					renderer.render( scene, camera );
+
+				}
+
+			}
+
+			// easy mobile device detection
+			function isMobileDevice () {
+
+				if ( navigator === undefined || navigator.userAgent === undefined ) {
+
+					return true;
+
+				}
+
+				var s = navigator.userAgent;
+
+				if (    s.match( /iPhone/i )
+//				     || s.match( /iPad/i )
+				     || s.match( /iPod/i )
+				     || s.match( /webOS/i )
+				     || s.match( /BlackBerry/i )
+				     || ( s.match( /Windows/i ) && s.match( /Phone/i ) )
+				     || ( s.match( /Android/i ) && s.match( /Mobile/i ) ) ) {
+
+					return true;
+
+				}
+
+				return false;
+
+			}
+
+			function startMotion ( mesh, key ) {
+
+				var name = key;
+				mesh.mixer.clipAction( name ).play();
+				mesh.mixer.clipAction( name + 'Morph' ).play();
+
+			}
+
+			function stopMotion ( mesh, key ) {
+
+				var name = key;
+				mesh.mixer.clipAction( name ).stop();
+				mesh.mixer.clipAction( name + 'Morph' ).stop();
+
+			}
+
+			function startBlink ( mesh ) {
+
+				mesh.mixer.clipAction( 'blinkMorph' ).play();
+
+			}
+
+			function stopBlink ( mesh ) {
+
+				mesh.mixer.clipAction( 'blinkMorph' ).stop();
+
+			}
+
+			function startWalking ( mesh ) {
+
+				motionStatus.inStartWalking = true;
+				motionStatus.inStopWalking = false;
+				motionStatus.elapsedTimeSinceStartWalking = 0.0;
+				//startMotion( mesh, 'walk' );
+
+			}
+
+			function startRunning ( mesh ) {
+
+				motionStatus.inStartRunning = true;
+				motionStatus.inStopRunning = false;
+				motionStatus.elapsedTimeSinceStartRunning = 0.0;
+				//startMotion( mesh, 'run' );
+
+			}
+
+			function stopWalking ( mesh ) {
+
+				motionStatus.inStartWalking = false;
+				motionStatus.inStopWalking = true;
+				motionStatus.elapsedTimeSinceStopWalking = 0.0;
+
+			}
+
+			function stopRunning ( mesh ) {
+
+				motionStatus.inStartRunning = false;
+				motionStatus.inStopRunning = true;
+				motionStatus.elapsedTimeSinceStopRunning = 0.0;
+
+			}
+
+			function removeBlinkFromMorphAnimations ( mesh ) {
+
+				var index = mesh.morphTargetDictionary[ blinkMorphName ];
+
+				if ( index === undefined ) {
+
+					return;
+
+				}
+
+				for ( var i = 0; i < mesh.geometry.morphAnimations.length; i++ ) {
+
+					mesh.geometry.morphAnimations[ i ].tracks.splice( index, 1 );
+
+				}
+
+			}
+
+			function manageMove ( delta ) {
+
+				var mesh = helper.meshes[ 0 ];
+
+				var isMoving = motionStatus.inMovingForward || motionStatus.inMovingBackward;
+				var isRotating = motionStatus.inRotatingLeft || motionStatus.inRotatingRight;
+
+				var isWalking = motionStatus.inMovingForward || motionStatus.inMovingBackward ||
+				                motionStatus.inRotatingLeft  || motionStatus.inRotatingRight;
+
+				var isRunning = isWalking && motionStatus.runFlag;
+
+				if ( isMoving ) {
+
+					//var speed = ( motionStatus.runFlag ? 0.6 : 0.2 ) * delta * 60;
+					var speed = mesh.mixer.clipAction( 'run' ).weight * 0.4 +
+					            mesh.mixer.clipAction( 'walk' ).weight * 0.2;
+					speed *= delta * 60;
+
+					var dz = speed * Math.cos( motionStatus.direction );
+					var dx = speed * Math.sin( motionStatus.direction );
+
+					if ( motionStatus.inMovingForward ) {
+
+						mesh.position.z += dz;
+						mesh.position.x += dx;
+
+					}
+
+					if ( motionStatus.inMovingBackward ) {
+
+						mesh.position.z -= dz;
+						mesh.position.x -= dx;
+
+					}
+
+				}
+
+				if ( isRotating ) {
+
+					var dr = Math.PI * 2 / 360 * 5 * delta * 60;
+
+					if ( motionStatus.inRotatingLeft ) {
+
+						motionStatus.direction += dr;
+						mesh.rotateY( dr );
+
+					}
+
+					if ( motionStatus.inRotatingRight ) {
+
+						motionStatus.direction -= dr;
+						mesh.rotateY( -dr );
+
+					}
+
+				}
+
+				if ( motionStatus.inStartWalking ) {
+
+					motionStatus.elapsedTimeSinceStartWalking += delta;
+					var action = mesh.mixer.clipAction( 'walk' );
+					action.weight += delta * 2;
+
+					if ( action.weight > 1.0 ) {
+
+						action.weight = 1.0;
+						motionStatus.inStartWalking = false;
+
+					}
+
+				}
+
+				if ( motionStatus.inStopWalking ) {
+
+					motionStatus.elapsedTimeSinceStopWalking += delta;
+					var action = mesh.mixer.clipAction( 'walk' );
+					action.weight -= delta;
+
+					if ( action.weight < 0.0 ) {
+
+						action.weight = 0.0;
+						motionStatus.inStopWalking = false;
+						//stopMotion( mesh, 'walk' );
+
+					}
+
+				}
+
+				if ( motionStatus.inStartRunning ) {
+
+					motionStatus.elapsedTimeSinceStartRunning += delta;
+					var action = mesh.mixer.clipAction( 'run' );
+					action.weight += delta * 2;
+
+					if ( action.weight > 1.0 ) {
+
+						action.weight = 1.0;
+						motionStatus.inStartRunning = false;
+
+					}
+
+					var action2 = mesh.mixer.clipAction( 'walk' );
+
+					if ( action.weight > action2.weight ) {
+
+						action2.weight = action.weight;
+
+					}
+
+				}
+
+				if ( motionStatus.inStopRunning ) {
+
+					motionStatus.elapsedTimeSinceStopRunning += delta;
+					var action = mesh.mixer.clipAction( 'run' );
+					action.weight -= delta;
+
+					if ( action.weight < 0.0 ) {
+
+						action.weight = 0.0;
+						motionStatus.inStopRunning = false;
+						//stopMotion( mesh, 'run' );
+
+					}
+
+				}
+
+				if ( ! motionStatus.inWalking && isWalking ) {
+
+					if ( isRunning ) {
+
+						startRunning( mesh );
+
+					} else {
+
+						startWalking( mesh );
+
+					}
+
+				}
+
+				if ( motionStatus.inWalking && ! isWalking ) {
+
+					if ( motionStatus.inRunning ) {
+
+						stopRunning( mesh );
+
+					} else {
+
+						stopWalking( mesh );
+
+					}
+
+				}
+
+				if ( motionStatus.inWalking && isWalking ) {
+
+					if ( isRunning && ! motionStatus.inRunning ) {
+
+						stopWalking( mesh );
+						startRunning( mesh );
+
+					}
+
+					if ( ! isRunning && motionStatus.inRunning ) {
+
+						stopRunning( mesh );
+						startWalking( mesh );
+
+					}
+
+				}
+
+				motionStatus.inWalking = isWalking;
+				motionStatus.inRunning = isRunning;
+
+			}
+
+			function onKeydown ( event ) {
+
+				if ( ! ready ) {
+
+					return;
+
+				}
+
+				switch ( event.keyCode ) {
+
+					case 16: // shift
+						motionStatus.runFlag = true;
+						break;
+
+					case 32: // space
+						resetPosition();
+						break;
+
+					case 37: // left
+						motionStatus.inRotatingLeft = true;
+						break;
+
+					case 38: // up
+						motionStatus.inMovingForward = true;
+						break;
+
+					case 39: // right
+						motionStatus.inRotatingRight = true;
+						break;
+
+					case 40: // down
+						//motionStatus.inMovingBackward = true;
+						break;
+
+					default:
+						break;
+
+				}
+
+			}
+
+			function onKeyup ( event ) {
+
+				if ( ! ready ) {
+
+					return;
+
+				}
+
+				switch ( event.keyCode ) {
+
+					case 16: // shift
+						motionStatus.runFlag = false;
+						break;
+
+					case 37: // left
+						motionStatus.inRotatingLeft = false;
+						break;
+
+					case 38: // up
+						motionStatus.inMovingForward = false;
+						break;
+
+					case 39: // right
+						motionStatus.inRotatingRight = false;
+						break;
+
+					case 40: // down
+						//motionStatus.inMovingBackward = false;
+						break;
+
+					default:
+						break;
+
+				}
+
+			}
+
+			function resetPosition () {
+
+				if ( camera ) {
+
+					camera.position.copy( cameraParams[ 0 ].position );
+					camera.up.set( 0, 1, 0 );
+					camera.rotation.set( 0, 0, 0 );
+					cameraControls.target.copy( scene.position );
+
+				}
+
+				if ( helper && helper.meshes.length > 0 ) {
+
+					var mesh = helper.meshes[ 0 ];
+					mesh.position.copy( modelParams[ 0 ].position );
+
+					motionStatus.direction = 0;
+					mesh.rotation.set( 0, 0, 0 );
+
+				}
+
+			}
+
+			function letObjectVisible ( obj ) {
+
+				obj.visible = true;
+
+			}
+
+			function letObjectInvisible ( obj ) {
+
+				if ( ! debug ) {
+
+					obj.visible = false;
+
+				}
+
+			}
+
+		</script>
+
+	</body>
+</html>
