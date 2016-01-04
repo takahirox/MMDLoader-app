@@ -755,13 +755,11 @@
 
 				if ( motionStatus.inWalking && ! isWalking ) {
 
+					stopWalking( mesh );
+
 					if ( motionStatus.inRunning ) {
 
 						stopRunning( mesh );
-
-					} else {
-
-						stopWalking( mesh );
 
 					}
 
