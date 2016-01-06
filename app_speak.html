@@ -211,8 +211,6 @@
 
 						loadVmds( mesh, function () {
 
-							removeBlinkFromMorphAnimations( mesh );
-
 							loader.pourVmdIntoModel( mesh, blinkVmd, 'blink' );
 
 							helper.setAnimation( mesh );
@@ -225,6 +223,7 @@
 
 								mesh.mixer.clipAction( name ).stop();
 								mesh.mixer.clipAction( name + 'Morph' ).stop();
+								mesh.mixer.clipAction( name + 'Morph' ).weight = 0.3;
 								mesh.mixer.clipAction( name ).clampWhenFinished = true;
 
 							}
@@ -497,24 +496,6 @@
 			function stopBlink ( mesh ) {
 
 				mesh.mixer.clipAction( 'blinkMorph' ).stop();
-
-			}
-
-			function removeBlinkFromMorphAnimations ( mesh ) {
-
-				var index = mesh.morphTargetDictionary[ blinkMorphName ];
-
-				if ( index === undefined ) {
-
-					return;
-
-				}
-
-				for ( var i = 0; i < mesh.geometry.morphAnimations.length; i++ ) {
-
-					mesh.geometry.morphAnimations[ i ].tracks.splice( index, 1 );
-
-				}
 
 			}
 

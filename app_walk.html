@@ -240,8 +240,6 @@
 
 						loadVmds( mesh, function () {
 
-							removeBlinkFromMorphAnimations( mesh );
-
 							loader.pourVmdIntoModel( mesh, blinkVmd, 'blink' );
 
 							helper.setAnimation( mesh );
@@ -590,24 +588,6 @@
 				motionStatus.inStartRunning = false;
 				motionStatus.inStopRunning = true;
 				motionStatus.elapsedTimeSinceStopRunning = 0.0;
-
-			}
-
-			function removeBlinkFromMorphAnimations ( mesh ) {
-
-				var index = mesh.morphTargetDictionary[ blinkMorphName ];
-
-				if ( index === undefined ) {
-
-					return;
-
-				}
-
-				for ( var i = 0; i < mesh.geometry.morphAnimations.length; i++ ) {
-
-					mesh.geometry.morphAnimations[ i ].tracks.splice( index, 1 );
-
-				}
 
 			}
 

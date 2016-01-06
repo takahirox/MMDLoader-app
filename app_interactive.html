@@ -323,6 +323,7 @@
 
 								mesh.mixer.clipAction( name ).stop();
 								mesh.mixer.clipAction( name + 'Morph' ).stop();
+								mesh.mixer.clipAction( name + 'Morph' ).weight = 0.4;
 								mesh.mixer.clipAction( name ).loop = THREE.LoopOnce;
 								//mesh.mixer.clipAction( name + 'Morph' ).loop = THREE.LoopOnce;
 								mesh.mixer.clipAction( name ).clampWhenFinished = true;
@@ -675,7 +676,18 @@
 
 				for ( var i = 0; i < mesh.geometry.morphAnimations.length; i++ ) {
 
-					mesh.geometry.morphAnimations[ i ].tracks.splice( index, 1 );
+					var tracks = mesh.geometry.morphAnimations[ i ].tracks;
+
+					for ( var j = 0; j < tracks.length; j++ ) {
+
+						if ( tracks[ j ].name === ".morphTargetInfluences[" + index + "]" ) {
+
+							mesh.geometry.morphAnimations[ i ].tracks.splice( j, 1 );
+							break;
+
+						}
+
+					}
 
 				}
 
