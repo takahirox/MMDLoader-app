@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>THREE.MMDLoader sample - speak</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #fff;
+				color: #000;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				color: #000;
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				text-align: right;
+				right: 20px;
+				z-index: 100;
+				display: block;
+			}
+			#info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
+			#messageform {
+				color: #000;
+				position: absolute;
+				top: 50%;
+				width: 100%;
+				text-align: center;
+				z-index: 100;
+				display: block;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div id="info">
+		<a href="https://github.com/takahirox/three.js" target="_blank">MMDLoader</a><br />
+		Speak<br />
+		<br />
+		Copyright<br />
+		<a href="http://threejs.org" target="_blank">three.js</a><br />
+		<a href="http://www.geocities.jp/higuchuu4/index_e.htm" target="_blank">Model Data</a><br />
+		<a href="http://nicomas.main.jp/mmddata/" target="_blank">Motion Data</a><br />
+		</div>
+
+		<div id="messageform">
+			<form method="post" onsubmit="onSubmit( this ); return false;">
+				<input id="message" type="text">
+				<input id="button" type="submit">
+			</form>
+		</div>
+
+		<script src="three.js/three.min.js"></script>
+
+		<script src="libs/charsetencoder.min.js"></script>
+		<script src="libs/ammo.js"></script>
+		<script src="three.js/TGALoader.js"></script>
+		<script src="three.js/MMDLoader.js"></script>
+		<script src="three.js/CCDIKSolver.js"></script>
+		<script src="three.js/MMDPhysics.js"></script>
+
+		<script src="three.js/Detector.js"></script>
+		<script src="libs/stats.min.js"></script>
+
+		<script>
+
+			var container, stats;
+
+			var camera, scene, renderer;
+			var helper, loader;
+			var eyesSensor;
+
+			var ready = false;
+			var debug = false;
+			var isSpeaking = false;
+
+			var mouseX = 0, mouseY = 0;
+
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+
+			var clock = new THREE.Clock();
+
+			var boneDictionary = {};
+			var modelDictionary = {};
+			var motionDictionary = {};
+
+			var motionStatus = {
+				inAnimation: false,
+				elapsedTime: 0.0,
+				duration: 0.0,
+				name: '',
+				index: 0
+			};
+
+			var modelParams = [
+				{
+					name: 'miku',
+					file: 'model/miku/miku_v2.pmd',
+					position: new THREE.Vector3( 0, -15,  0 )
+				}
+			];
+
+			var blinkMorphName = 'まばたき';
+			var headBoneName = '頭';
+			var eyesParam = {
+				boneName: '左目',
+				offset: new THREE.Vector3( -0.4, 0, 0 )
+			};
+
+			var motionParams = [
+				{
+					name: 'speak',
+					files: [ 'vmd/imas/mouth1.vmd', 'vmd/imas/face24.vmd' ]
+				}
+			];
+
+			var poseParams = [
+				{
+					name: 'basic',
+					file: 'vpd/imas/makoto_basic.vpd'
+				}
+			];
+
+			var poses = {};
+
+			var blinkVmd = {
+				metadata: {
+					name: 'blink',
+					coordinateSystem: 'right',
+					morphCount: 11,
+					cameraCount: 0,
+					motionCount: 0
+				},
+				morphs: [
+					{ frameNum:   0, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  10, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  15, morphName: blinkMorphName, weight: 1.0 },
+					{ frameNum:  20, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  40, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  43, morphName: blinkMorphName, weight: 1.0 },
+					{ frameNum:  46, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  49, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:  52, morphName: blinkMorphName, weight: 1.0 },
+					{ frameNum:  55, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum: 200, morphName: blinkMorphName, weight: 0.0 },
+				],
+				cameras: [],
+				motions: []
+			};
+
+			var onProgress = function ( xhr ) {
+				if ( xhr.lengthComputable ) {
+					var percentComplete = xhr.loaded / xhr.total * 100;
+					console.log( Math.round(percentComplete, 2) + '% downloaded' );
+				}
+			};
+
+			var onError = function ( xhr ) {
+			};
+
+			init();
+			animate();
+
+			function init() {
+
+				disableMessageForm();
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+				camera.position.z = 18;
+
+				// scene
+
+				scene = new THREE.Scene();
+
+				var ambient = new THREE.AmbientLight( 0x666666 );
+				scene.add( ambient );
+
+				var directionalLight = new THREE.DirectionalLight( 0x887766 );
+				directionalLight.position.set( -1, 1, 1 ).normalize();
+				scene.add( directionalLight );
+
+				//
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setClearColor( new THREE.Color( 0xffffff ) );
+				container.appendChild( renderer.domElement );
+
+				// model
+
+				helper = new THREE.MMDHelper( renderer );
+
+				loader = new THREE.MMDLoader();
+				loader.setDefaultTexturePath( './default/' );
+
+				loadModels( function () {
+
+					var mesh = helper.meshes[ 0 ];
+
+					loadPoses( mesh, function () {
+
+						helper.poseAsVpd( mesh, poses[ 'basic' ] );
+
+						loadVmds( mesh, function () {
+
+							removeBlinkFromMorphAnimations( mesh );
+
+							loader.pourVmdIntoModel( mesh, blinkVmd, 'blink' );
+
+							helper.setAnimation( mesh );
+
+							for ( var i = 0; i < motionParams.length; i++ ) {
+
+								var param = motionParams[ i ];
+
+								var name = param.name;
+
+								mesh.mixer.clipAction( name ).stop();
+								mesh.mixer.clipAction( name + 'Morph' ).stop();
+								mesh.mixer.clipAction( name ).clampWhenFinished = true;
+
+							}
+
+							createDictionary( mesh );
+							generateEyesSensor( mesh );
+
+							startBlink( mesh );
+
+							enableMessageForm();
+							focusMessageForm();
+
+							ready = true;
+
+						} );
+
+					} );
+
+				} );
+
+				document.addEventListener( 'mousemove', onMouseMove, false );
+				document.addEventListener( 'touchstart', onTouchStart, false );
+				document.addEventListener( 'touchmove', onTouchMove, false );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function loadModels ( callback ) {
+
+				function load ( index ) {
+
+					if ( index >= modelParams.length ) {
+
+						callback();
+						return;
+
+					}
+
+					var param = modelParams[ index ];
+
+					loader.loadModel( param.file, function ( object ) {
+
+						var mesh = object;
+						mesh.position.copy( param.position );
+
+						helper.add( mesh );
+
+						/*
+						 * Note: You must set Physics
+						 *       before you add mesh to scene or any other 3D object.
+						 * Note: Physics calculation is pretty heavy.
+						 *       It may not be acceptable for most mobile devices yet.
+				 		 */
+						if ( ! isMobileDevice() ) {
+
+							helper.setPhysics( mesh );
+
+						}
+
+						scene.add( mesh );
+
+						load( index + 1 );
+
+					}, onProgress, onError );
+
+				}
+
+				load( 0 );
+
+			}
+
+			function loadVmds ( mesh, callback ) {
+
+				function load ( index ) {
+
+					if ( index >= motionParams.length ) {
+
+						callback();
+						return;
+
+					}
+
+					var param = motionParams[ index ];
+
+					loader.loadVmds( param.files, function ( vmd ) {
+
+						loader.pourVmdIntoModel( mesh, vmd, param.name );
+
+						load( index + 1 );
+
+					}, onProgress, onError );
+
+				}
+
+				load( 0 );
+
+			}
+
+			function loadPoses ( mesh, callback ) {
+
+				function load ( index ) {
+
+					if ( index >= poseParams.length ) {
+
+						callback();
+						return;
+
+					}
+
+					var param = poseParams[ index ];
+
+					loader.loadVpd( param.file, function ( vpd ) {
+
+						poses[ param.name ] = vpd;
+
+						load( index + 1 );
+
+					}, onProgress, onError );
+
+				}
+
+				load( 0 );
+
+			}
+
+			function createDictionary ( mesh ) {
+
+				var bones = mesh.skeleton.bones;
+
+				for ( var i = 0; i < bones.length; i++ ) {
+
+					var b = bones[ i ];
+					boneDictionary[ b.originalName ] = i;
+
+				}
+
+				for ( var i = 0; i < motionParams.length; i++ ) {
+
+					var p = motionParams[ i ];
+					motionDictionary[ p.name ] = i;
+
+				}
+
+			}
+
+			function generateEyesSensor ( mesh ) {
+
+				var p = eyesParam;
+
+				var opacity = 0.2;
+
+				var geometry = new THREE.BoxGeometry( 1, 1, 3 );
+				var material = new THREE.MeshBasicMaterial( { color: 0x008888, transparent: true, opacity: opacity } );
+				var cube = new THREE.Mesh( geometry, material );
+				cube.name = 'eyes';
+				letObjectInvisible( cube );
+
+				if ( p.offset !== undefined ) {
+
+					cube.position.add( p.offset );
+
+				}
+
+				mesh.skeleton.bones[ boneDictionary[ p.boneName ] ].add( cube );
+
+				eyesSensor = cube;
+
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+				render();
+
+			}
+
+			function render() {
+
+				if ( ready ) {
+
+					var delta = clock.getDelta();
+					helper.animate( delta );
+					helper.render( scene, camera );
+
+				} else {
+
+					renderer.clear();
+					renderer.render( scene, camera );
+
+				}
+
+			}
+
+			// easy mobile device detection
+			function isMobileDevice () {
+
+				if ( navigator === undefined || navigator.userAgent === undefined ) {
+
+					return true;
+
+				}
+
+				var s = navigator.userAgent;
+
+				if (    s.match( /iPhone/i )
+//				     || s.match( /iPad/i )
+				     || s.match( /iPod/i )
+				     || s.match( /webOS/i )
+				     || s.match( /BlackBerry/i )
+				     || ( s.match( /Windows/i ) && s.match( /Phone/i ) )
+				     || ( s.match( /Android/i ) && s.match( /Mobile/i ) ) ) {
+
+					return true;
+
+				}
+
+				return false;
+
+			}
+
+			function letModelLookAtMouse () {
+
+				if ( ready === false ) {
+
+					return;
+
+				}
+
+				var mesh = helper.meshes[ 0 ];
+
+				// this parameter is heuristic.
+				// you may need to adjust depending on model, camera, and etc.
+				var pos = new THREE.Vector3( mouseX * 640,
+				                             mouseY * 480,
+				                             -camera.position.z * 2 );
+
+				pos.unproject( camera );
+
+				var bone = eyesSensor; //mesh.skeleton.bones[ 94 ];
+
+				pos.sub( bone.getWorldPosition() );
+
+				mesh.skeleton.bones[ boneDictionary[ headBoneName ] ].lookAt( pos );
+
+			}
+
+			function startBlink ( mesh ) {
+
+				mesh.mixer.clipAction( 'blinkMorph' ).play();
+
+			}
+
+			function stopBlink ( mesh ) {
+
+				mesh.mixer.clipAction( 'blinkMorph' ).stop();
+
+			}
+
+			function removeBlinkFromMorphAnimations ( mesh ) {
+
+				var index = mesh.morphTargetDictionary[ blinkMorphName ];
+
+				if ( index === undefined ) {
+
+					return;
+
+				}
+
+				for ( var i = 0; i < mesh.geometry.morphAnimations.length; i++ ) {
+
+					mesh.geometry.morphAnimations[ i ].tracks.splice( index, 1 );
+
+				}
+
+			}
+
+			// easy implementation
+			function judgeIfEnglish ( str ) {
+
+				for ( var i = 0; i < str.length; i++ ) {
+
+					if ( str.charCodeAt( i ) >= 256 ) {
+
+						return false;
+
+					}
+
+				}
+
+				return true;
+
+			}
+
+			function speak ( text ) {
+
+				if ( ! ready ) {
+
+					return;
+
+				}
+
+				if ( isSpeaking || text === undefined || text.length === 0 ) {
+
+					return;
+
+				}
+
+				if ( speechSynthesis === undefined && window.speechSynthesis === undefined ) {
+
+					throw 'this browser seems not to support speechSynthesis.';
+
+				}
+
+				disableMessageForm();
+
+				var mesh = helper.meshes[ 0 ];
+				var msg = new SpeechSynthesisUtterance();
+				msg.pitch = 1.5;
+				msg.lang = judgeIfEnglish( text ) ? 'en-US' : 'ja-JP';
+				msg.text = text;
+
+				msg.onstart = function ( event ) {
+
+					isSpeaking = true;
+					mesh.mixer.clipAction( 'speakMorph' ).play();
+
+				};
+
+				msg.onend = function ( event ) {
+
+					isSpeaking = false;
+					mesh.mixer.clipAction( 'speakMorph' ).stop();
+					clearMessageForm();
+					enableMessageForm();
+					focusMessageForm();
+
+				};
+
+				speechSynthesis.speak( msg );
+
+			}
+
+			function onSubmit ( form ) {
+
+				if ( ! ready ) {
+
+					return;
+
+				}
+
+				var msg = document.getElementById( 'message' );
+				speak( msg.value );
+
+			}
+
+			function enableMessageForm () {
+
+				document.getElementById( 'message' ).disabled = false;
+				document.getElementById( 'button' ).disabled = false;
+
+			}
+
+			function disableMessageForm () {
+
+				document.getElementById( 'message' ).disabled = true;
+				document.getElementById( 'button' ).disabled = true;
+
+			}
+
+			function clearMessageForm () {
+
+				document.getElementById( 'message' ).value = '';
+
+			}
+
+			function focusMessageForm () {
+
+				document.getElementById( 'message' ).focus();
+
+			}
+
+			function onMouseMove ( event ) {
+
+				// make mouseX/Y being between -1.0 and 1.0
+				mouseX =  ( event.clientX / window.innerWidth ) * 2 - 1;
+				mouseY = -( event.clientY / window.innerHeight ) * 2 + 1;
+
+				letModelLookAtMouse();
+
+			}
+
+			function onTouchStart ( event ) {
+
+				// temporal workaround
+				onMousMove( { button: 0,
+				              clientX: event.changedTouches[ 0 ].clientX,
+				              clientY: event.changedTouches[ 0 ].clientY } );
+
+			}
+
+			function onTouchMove ( event ) {
+
+				// temporal workaround
+				onMouseMove( { clientX: event.changedTouches[ 0 ].clientX,
+				               clientY: event.changedTouches[ 0 ].clientY } );
+
+			}
+
+			function letObjectVisible ( obj ) {
+
+				obj.visible = true;
+
+			}
+
+			function letObjectInvisible ( obj ) {
+
+				if ( ! debug ) {
+
+					obj.visible = false;
+
+				}
+
+			}
+
+		</script>
+
+	</body>
+</html>
