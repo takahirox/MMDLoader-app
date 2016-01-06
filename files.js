@@ -2,6 +2,7 @@ var files = {
 	"App": [
 		"app_interactive",
 		"app_shadow",
+		"app_speak",
 		"app_walk"
 	],
 	"External Links": [
