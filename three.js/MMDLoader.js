@@ -2618,7 +2618,6 @@ THREE.MMDLoader.prototype.createAnimation = function ( mesh, vmd, name ) {
 		var animation = {
 			name: name === undefined ? THREE.Math.generateUUID() : name,
 			fps: 30,
-			length: 0.0,
 			hierarchy: []
 		};
 
@@ -2671,7 +2670,6 @@ THREE.MMDLoader.prototype.createAnimation = function ( mesh, vmd, name ) {
 		if ( clip !== null ) {
 
 			mesh.geometry.animations.push( clip );
-			animation.length = clip.duration;
 
 		}
 
@@ -2689,7 +2687,6 @@ THREE.MMDLoader.prototype.createAnimation = function ( mesh, vmd, name ) {
 
 		var morphAnimation = {
 			fps: 30,
-			length: 0.0,
 			hierarchy: []
 		};
 
@@ -2742,7 +2739,6 @@ THREE.MMDLoader.prototype.createAnimation = function ( mesh, vmd, name ) {
 			}
 
 			mesh.geometry.morphAnimations.push( clip );
-			morphAnimation.length = clip.duration;
 
 		}
 
