@@ -69,9 +69,11 @@
 
 		<script>
 
-			if ( window.location.protocol !== 'file:' && window.location.hostname !== 'localhost' && window.location.protocol !== 'https:' ){
+			if ( parent.window.location.protocol !== 'file:' &&
+			     parent.window.location.hostname !== 'localhost' &&
+			     parent.window.location.protocol !== 'https:' ){
 
-				window.location.protocol = 'https';
+				parent.window.location.protocol = 'https';
 
 			}
 
