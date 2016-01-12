@@ -47,8 +47,8 @@
 		</div>
 
 		<div id="container">
-			<video id="video" width="368" height="288" autoplay loop>
-				<source src="./video/franck.ogv" type="video/ogg"/>
+			<video id="video" width="368" height="288" preload="auto">
+				<!--<source src="./video/franck.ogv" type="video/ogg"/>-->
 			</video>
 			<canvas id="canvas" width="368" height="288"></canvas>
 		</div>
@@ -71,6 +71,40 @@
 		<script>
 
 			var videoInput = document.getElementById( 'video' );
+
+			navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+			window.URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
+
+			if ( navigator.getUserMedia ) {
+
+				var videoSelector = { video: true };
+
+				navigator.getUserMedia( videoSelector, function ( stream ) {
+
+					if ( videoInput.mozCaptureStream ) {
+
+						videoInput.mozSrcObject = stream;
+
+					} else {
+
+						videoInput.src = ( window.URL && window.URL.createObjectURL( stream ) ) || stream;
+
+					}
+
+				},
+				function() {
+
+					alert( 'There was some problems trying to fetch video from your webcam.' );
+
+				} );
+				videoInput.play();
+
+			} else {
+
+				alert( 'Your browser does not seem to support getUserMedia' );
+
+			}
+
 			var ctracker = new clm.tracker();
 			ctracker.init( pModel );
 			ctracker.start( videoInput );
@@ -303,8 +337,8 @@
 
 					var mesh = helper.meshes[ 0 ];
 
-					//cc.clearRect( 0, 0, canvasInput.width, canvasInput.height );
-					//ctracker.draw( canvasInput );
+					cc.clearRect( 0, 0, canvasInput.width, canvasInput.height );
+					ctracker.draw( canvasInput );
 
 					updateModel( mesh );
 
