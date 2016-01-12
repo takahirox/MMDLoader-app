@@ -91,6 +91,8 @@
 
 			var clock = new THREE.Clock();
 
+			var preData = {};
+
 			var boneDictionary = {};
 			var modelDictionary = {};
 			var morphDictionary = null;
@@ -119,22 +121,14 @@
 				metadata: {
 					name: 'blink',
 					coordinateSystem: 'right',
-					morphCount: 11,
+					morphCount:  3,
 					cameraCount: 0,
 					motionCount: 0
 				},
 				morphs: [
 					{ frameNum:   0, morphName: blinkMorphName, weight: 0.0 },
-					{ frameNum:  10, morphName: blinkMorphName, weight: 0.0 },
-					{ frameNum:  15, morphName: blinkMorphName, weight: 1.0 },
-					{ frameNum:  20, morphName: blinkMorphName, weight: 0.0 },
-					{ frameNum:  40, morphName: blinkMorphName, weight: 0.0 },
-					{ frameNum:  43, morphName: blinkMorphName, weight: 1.0 },
-					{ frameNum:  46, morphName: blinkMorphName, weight: 0.0 },
-					{ frameNum:  49, morphName: blinkMorphName, weight: 0.0 },
-					{ frameNum:  52, morphName: blinkMorphName, weight: 1.0 },
-					{ frameNum:  55, morphName: blinkMorphName, weight: 0.0 },
-					{ frameNum: 200, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:   3, morphName: blinkMorphName, weight: 1.0 },
+					{ frameNum:   6, morphName: blinkMorphName, weight: 0.0 }
 				],
 				cameras: [],
 				motions: []
@@ -200,7 +194,7 @@
 
 						createDictionary( mesh );
 
-						startBlink( mesh );
+						initBlink( mesh );
 
 						ready = true;
 
@@ -309,8 +303,8 @@
 
 					var mesh = helper.meshes[ 0 ];
 
-					cc.clearRect( 0, 0, canvasInput.width, canvasInput.height );
-					ctracker.draw( canvasInput );
+					//cc.clearRect( 0, 0, canvasInput.width, canvasInput.height );
+					//ctracker.draw( canvasInput );
 
 					updateModel( mesh );
 
@@ -354,15 +348,24 @@
 
 			}
 
-			function startBlink ( mesh ) {
+			function initBlink ( mesh ) {
 
-				mesh.mixer.clipAction( 'blinkMorph' ).play();
+				mesh.mixer.clipAction( 'blinkMorph' ).loop = THREE.LoopOnce;
 
 			}
 
-			function stopBlink ( mesh ) {
+			function startBlink ( mesh ) {
 
-				mesh.mixer.clipAction( 'blinkMorph' ).stop();
+				var clip = mesh.mixer.clipAction( 'blinkMorph' );
+
+				if ( clip.time < clip._clip.duration ) {
+
+					return;
+
+				}
+
+				clip.stop();
+				clip.play();
 
 			}
 
@@ -376,11 +379,17 @@
 
 				updateEyeball( mesh );
 				updateEyeOpen( mesh );
-				//updateEyebrow( mesh );
+				updateEyebrow( mesh );
 				updateMouth( mesh );
 				updateFaceZAngle( mesh );
 				updateFaceYAngle( mesh );
 				updateFaceXAngle( mesh );
+
+				if ( detectBlink() ) {
+
+					startBlink( mesh );
+
+				}
 
 			}
 
@@ -435,11 +444,13 @@
 
 				var pos = getEyebrowPosition();
 
-				pos = pos - 10;
-				pos = pos / 10;
+				pos = pos / 2;
 
 				pos = Math.min( 1.0, pos );
 				pos = Math.max( 0.0, pos );
+
+				pos = 1.0 - pos;
+				pos = 0.5 + pos / 2;
 
 				mesh.morphTargetInfluences[ morphDictionary[ '下' ] ] = pos;
 
@@ -450,14 +461,16 @@
 				var sizeX = getMouthXSize();
 				var sizeY = getMouthYSize();
 
-				sizeX = Math.max( 0.0, sizeX - 48.0 );
-				sizeX = Math.min( 0.1, sizeX / 10 );
+				sizeX = sizeX - 1;
+				sizeX = Math.max( 0.0, sizeX );
+				sizeX = Math.min( 1.0, sizeX );
+				sizeX = sizeX / 4;
 
 				sizeY = sizeY / 2 - 0.1;
 				sizeY = Math.max( 0.0, sizeY );
 				sizeY = Math.min( 0.6, sizeY );
 
-				//mesh.morphTargetInfluences[ morphDictionary[ 'い' ] ] = sizeX;
+				mesh.morphTargetInfluences[ morphDictionary[ 'い' ] ] = sizeX;
 				mesh.morphTargetInfluences[ morphDictionary[ 'あ' ] ] = sizeY;
 
 			}
@@ -467,7 +480,7 @@
 				var angle = getFaceXAngle();
 				var bone = mesh.skeleton.bones[ boneDictionary[ '頭' ] ];
 
-				bone.rotation.x = angle / 10;
+				bone.rotation.x = angle - Math.PI / 18;
 
 			}
 
@@ -501,10 +514,10 @@
 
 				var p = ctracker.getCurrentPosition();
 
-				var p1 = p[ 44 ];
-				var p2 = p[ 50 ];
+				var d1 = calculateDistance( p[ 50 ], p[ 44 ] );
+				var d2 = calculateDistance( p[ 30 ], p[ 25 ] );
 
-				return calculateDistance( p1, p2 );
+				return d1 / d2;
 
 			}
 
@@ -523,10 +536,10 @@
 
 				var p = ctracker.getCurrentPosition();
 
-				var p1 = p[ 20 ];
-				var p2 = p[ 63 ];
+				var eyebrowDistance = calculateDistance( p[ 21 ], p[ 24 ] );
+				var lipThickness = calculateDistance( p[ 53 ], p[ 57 ] );
 
-				return calculateDistance( p1, p2 );
+				return eyebrowDistance / lipThickness;
 
 			}
 
@@ -534,10 +547,14 @@
 
 				var p = ctracker.getCurrentPosition();
 
-				var underNose = calculateDistance( p[ 37 ], p[ 47 ] );
-				var lipThickness = calculateDistance( p[ 57 ], p[ 58 ] );
+				var p1 = p[ 2 ];
+				var p2 = p[ 7 ];
+				var p3 = p[ 12 ];
 
-				return underNose / lipThickness;
+				var v1 = [ p1[ 0 ] - p2[ 0 ], p1[ 1 ] - p2[ 1 ] ];
+				var v2 = [ p3[ 0 ] - p2[ 0 ], p3[ 1 ] - p2[ 1 ] ];
+
+				return ( v1[ 0 ] * v2[ 0 ] + v1[ 1 ] * v2[ 1 ] ) / ( Math.sqrt( v1[ 0 ] * v1[ 0 ] + v1[ 1 ] * v1[ 1 ] ) * Math.sqrt( v2[ 0 ] * v2[ 0 ] + v2[ 1 ] * v2[ 1 ] ) );
 
 			}
 
@@ -651,6 +668,42 @@
 				var lipThickness = calculateDistance( p[ 53 ], p[ 57 ] );
 
 				return eyeDistance / lipThickness;
+
+			}
+
+			function detectBlink () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var lipThickness = calculateDistance( p[ 53 ], p[ 57 ] );
+
+				var leftEyeball = p[ 32 ];
+				var rightEyeball = p[ 27 ];
+				var nose = p[ 37 ];
+
+				if ( preData[ 'nose' ] !== undefined ) {
+
+					var dyLE = leftEyeball[ 1 ] - preData[ 'leftEyeball' ][ 1 ];
+					var dyRE = rightEyeball[ 1 ] - preData[ 'rightEyeball' ][ 1 ];
+
+					var dLE = calculateDistance( leftEyeball, preData[ 'leftEyeball' ] );
+					var dRE = calculateDistance( rightEyeball, preData[ 'rightEyeball' ] );
+					var dN = calculateDistance( nose, preData[ 'nose' ] );
+
+					if ( ( ( dyLE / lipThickness ) > 0.3 && ( dLE / dN ) > 2.0 ) || 
+					     ( ( dyRE / lipThickness ) > 0.3 && ( dRE / dN ) > 2.0 ) ) {
+
+						return true;
+
+					}
+
+				}
+
+				preData[ 'nose' ] = nose.slice();
+				preData[ 'leftEyeball' ] = leftEyeball.slice();
+				preData[ 'rightEyeball' ] = rightEyeball.slice();
+
+				return false;
 
 			}
 		</script>
