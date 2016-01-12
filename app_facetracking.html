@@ -309,8 +309,8 @@
 
 					var mesh = helper.meshes[ 0 ];
 
-					//cc.clearRect( 0, 0, canvasInput.width, canvasInput.height );
-					//ctracker.draw( canvasInput );
+					cc.clearRect( 0, 0, canvasInput.width, canvasInput.height );
+					ctracker.draw( canvasInput );
 
 					updateModel( mesh );
 
@@ -375,6 +375,7 @@
 				}
 
 				updateEyeball( mesh );
+				updateEyeOpen( mesh );
 				//updateEyebrow( mesh );
 				updateMouth( mesh );
 				updateFaceZAngle( mesh );
@@ -392,31 +393,41 @@
 
 			function updateLeftEyeball ( mesh ) {
 
-				var rPosX = getLeftEyeballXPosition();
-				var rPosY = getLeftEyeballYPosition();
+				var posX = getLeftEyeballXPosition();
+				var posY = getLeftEyeballYPosition();
 				var bone = mesh.skeleton.bones[ boneDictionary[ '左目' ] ];
-				var gbone = mesh.geometry.bones[ boneDictionary[ '左目' ] ];
 
-				rPosX =  rPosX / 30;
-				rPosY =  rPosY / 20;
-
-				bone.position.x = gbone.pos[ 0 ] + rPosX;
-				bone.position.y = gbone.pos[ 1 ] + rPosY;
+				bone.rotation.y =  posX * 4;
+				bone.rotation.x =  posY * 4;
 
 			}
 
 			function updateRightEyeball ( mesh ) {
 
-				var rPosX = getRightEyeballXPosition();
-				var rPosY = getRightEyeballYPosition();
+				var posX = getRightEyeballXPosition();
+				var posY = getRightEyeballYPosition();
 				var bone = mesh.skeleton.bones[ boneDictionary[ '右目' ] ];
-				var gbone = mesh.geometry.bones[ boneDictionary[ '右目' ] ];
 
-				rPosX =  rPosX / 30;
-				rPosY =  rPosY / 20;
+				bone.rotation.y = -posX * 4;
+				bone.rotation.x =  posY * 4;
 
-				bone.position.x = gbone.pos[ 0 ] + rPosX;
-				bone.position.y = gbone.pos[ 1 ] + rPosY;
+			}
+
+			function updateEyeOpen ( mesh ) {
+
+				var sizeR = getRightEyeOpen();
+				var sizeL = getLeftEyeOpen();
+
+				sizeR = 1.0 - sizeR * 0.7;
+				sizeR = Math.max( 0.0, sizeR );
+				sizeR = Math.min( 1.0, sizeR );
+
+				sizeL = 1.0 - sizeL * 0.7;
+				sizeL = Math.max( 0.0, sizeL );
+				sizeL = Math.min( 1.0, sizeL );
+
+				mesh.morphTargetInfluences[ morphDictionary[ 'ウィンク' ] ] = sizeR;
+				mesh.morphTargetInfluences[ morphDictionary[ 'ウィンク右' ] ] = sizeL;
 
 			}
 
@@ -442,10 +453,11 @@
 				sizeX = Math.max( 0.0, sizeX - 48.0 );
 				sizeX = Math.min( 0.1, sizeX / 10 );
 
-				sizeY = Math.max( 0.0, sizeY - 2.0 );
-				sizeY = Math.min( 0.6, sizeY / 10 );
+				sizeY = sizeY / 2 - 0.1;
+				sizeY = Math.max( 0.0, sizeY );
+				sizeY = Math.min( 0.6, sizeY );
 
-				mesh.morphTargetInfluences[ morphDictionary[ 'い' ] ] = sizeX;
+				//mesh.morphTargetInfluences[ morphDictionary[ 'い' ] ] = sizeX;
 				mesh.morphTargetInfluences[ morphDictionary[ 'あ' ] ] = sizeY;
 
 			}
@@ -455,9 +467,7 @@
 				var angle = getFaceXAngle();
 				var bone = mesh.skeleton.bones[ boneDictionary[ '頭' ] ];
 
-				angle = angle - 35;
-
-				bone.rotation.x = angle / 50;
+				bone.rotation.x = angle / 10;
 
 			}
 
@@ -502,10 +512,10 @@
 
 				var p = ctracker.getCurrentPosition();
 
-				var p1 = p[ 60 ];
-				var p2 = p[ 57 ];
+				var mouthDistance = calculateDistance( p[ 60 ], p[ 57 ] );
+				var lipThickness = calculateDistance( p[ 53 ], p[ 57 ] );
 
-				return calculateDistance( p1, p2 );
+				return mouthDistance / lipThickness;
 
 			}
 
@@ -524,10 +534,10 @@
 
 				var p = ctracker.getCurrentPosition();
 
-				var p1 = p[ 33 ];
-				var p2 = p[ 62 ];
+				var underNose = calculateDistance( p[ 37 ], p[ 47 ] );
+				var lipThickness = calculateDistance( p[ 57 ], p[ 58 ] );
 
-				return calculateDistance( p1, p2 );
+				return underNose / lipThickness;
 
 			}
 
@@ -566,14 +576,14 @@
 
 				var p = ctracker.getCurrentPosition();
 
-				var p1 = p[ 30 ];
-				var p2 = p[ 32 ];
+				var p1 = p[ 32 ];
+				var p2 = p[ 30 ];
 				var p3 = p[ 28 ];
 
 				var d1 = calculateDistance( p1, p2 );
 				var d2 = calculateDistance( p3, p2 );
 
-				return d1 - d2;
+				return d1 / d2 - 0.5;
 
 			}
 
@@ -581,14 +591,14 @@
 
 				var p = ctracker.getCurrentPosition();
 
-				var p1 = p[ 29 ];
-				var p2 = p[ 32 ];
-				var p3 = p[ 31 ];
+				var p1 = p[ 32 ];
+				var p2 = p[ 31 ];
+				var p3 = p[ 29 ];
 
 				var d1 = calculateDistance( p1, p2 );
 				var d2 = calculateDistance( p3, p2 );
 
-				return d1 - d2;
+				return d1 / d2 - 0.5;
 
 			}
 
@@ -596,14 +606,14 @@
 
 				var p = ctracker.getCurrentPosition();
 
-				var p1 = p[ 23 ];
-				var p2 = p[ 27 ];
-				var p3 = p[ 25 ];
+				var p1 = p[ 27 ];
+				var p2 = p[ 25 ];
+				var p3 = p[ 23 ];
 
 				var d1 = calculateDistance( p1, p2 );
 				var d2 = calculateDistance( p3, p2 );
 
-				return d1 - d2;
+				return d1 / d2 - 0.5;
 
 			}
 
@@ -611,14 +621,36 @@
 
 				var p = ctracker.getCurrentPosition();
 
-				var p1 = p[ 24 ];
-				var p2 = p[ 27 ];
-				var p3 = p[ 26 ];
+				var p1 = p[ 27 ];
+				var p2 = p[ 26 ];
+				var p3 = p[ 24 ];
 
 				var d1 = calculateDistance( p1, p2 );
 				var d2 = calculateDistance( p3, p2 );
 
-				return d1 - d2;
+				return d1 / d2 - 0.5;
+
+			}
+
+			function getRightEyeOpen () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var eyeDistance = calculateDistance( p[ 26 ], p[ 24 ] );
+				var lipThickness = calculateDistance( p[ 53 ], p[ 57 ] );
+
+				return eyeDistance / lipThickness;
+
+			}
+
+			function getLeftEyeOpen () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var eyeDistance = calculateDistance( p[ 31 ], p[ 29 ] );
+				var lipThickness = calculateDistance( p[ 53 ], p[ 57 ] );
+
+				return eyeDistance / lipThickness;
 
 			}
 		</script>
