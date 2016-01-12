@@ -69,6 +69,12 @@
 
 		<script>
 
+			if ( window.location.protocol !== 'file:' && window.location.hostname !== 'localhost' && window.location.protocol !== 'https:' ){
+
+				window.location.protocol = 'https';
+
+			}
+
 			var videoInput = document.getElementById( 'video' );
 
 			navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
