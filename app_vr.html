@@ -65,7 +65,7 @@
 
 			var container, stats;
 
-			var mesh, camera, scene, renderer;
+			var mesh, dummy, camera, scene, renderer;
 			var effect, controls;
 			var helper;
 
@@ -87,8 +87,11 @@
 				document.body.appendChild( container );
 
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
-				camera.position.y = 15;
-				camera.position.z = 40;
+
+				dummy = new THREE.Camera();
+				dummy.position.y = 15;
+				dummy.position.z = 40;
+				dummy.add( camera );
 
 				// scene
 
@@ -179,7 +182,7 @@
 							scene.add( listener );
 							scene.add( stage );
 							scene.add( mesh );
-							scene.add( camera );
+							scene.add( dummy );
 
 							ready = true;
 
