@@ -12,7 +12,7 @@
 THREE.VREffect = function ( renderer, onError ) {
 
 	var vrHMD;
-	var deprecatedAPI = false;
+	var isDeprecatedAPI = false;
 	var eyeTranslationL = new THREE.Vector3();
 	var eyeTranslationR = new THREE.Vector3();
 	var renderRectL, renderRectR;
@@ -25,13 +25,13 @@ THREE.VREffect = function ( renderer, onError ) {
 			if ( 'VRDisplay' in window && devices[ i ] instanceof VRDisplay ) {
 
 				vrHMD = devices[ i ];
-				deprecatedAPI = false;
+				isDeprecatedAPI = false;
 				break; // We keep the first we encounter
 
 			} else if ( 'HMDVRDevice' in window && devices[ i ] instanceof HMDVRDevice ) {
 
 				vrHMD = devices[ i ];
-				deprecatedAPI = true;
+				isDeprecatedAPI = true;
 				break; // We keep the first we encounter
 
 			}
@@ -62,14 +62,19 @@ THREE.VREffect = function ( renderer, onError ) {
 	this.scale = 1;
 
 	var isPresenting = false;
-	var cachedWidth, cachedHeight;
+	var rendererSize, rendererPixelRatio;
 
 	this.setSize = function ( width, height ) {
 
-		cachedWidth = width;
-		cachedHeight = height;
+		renderSize = { width: width, height: height };
 
-		if ( !isPresenting ) {
+		if ( isPresenting ) {
+
+			var eyeParamsL = vrHMD.getEyeParameters( 'left' );
+			renderer.setPixelRatio( 1 );
+			renderer.setSize( eyeParamsL.renderRect.width * 2, eyeParamsL.renderRect.height, false );
+
+		} else {
 
 			renderer.setSize( width, height );
 
@@ -84,22 +89,23 @@ THREE.VREffect = function ( renderer, onError ) {
 
 	document.addEventListener( fullscreenchange, function () {
 
-		if ( vrHMD && deprecatedAPI ) {
+		if ( vrHMD && isDeprecatedAPI ) {
 
 			isPresenting = document.mozFullScreenElement || document.webkitFullscreenElement;
 
 			if ( isPresenting ) {
 
-				var size = renderer.getSize();
-				cachedWidth = size.width;
-				cachedHeight = size.height;
+				rendererPixelRatio = renderer.getPixelRatio();
+				rendererSize = renderer.getSize();
 
 				var eyeParamsL = vrHMD.getEyeParameters( 'left' );
+				renderer.setPixelRatio( 1 );
 				renderer.setSize( eyeParamsL.renderRect.width * 2, eyeParamsL.renderRect.height, false );
 
 			} else {
 
-				renderer.setSize( cachedWidth, cachedHeight );
+				renderer.setPixelRatio( rendererPixelRatio );
+				renderer.setSize( rendererSize.width, rendererSize.height );
 
 			}
 
@@ -113,16 +119,16 @@ THREE.VREffect = function ( renderer, onError ) {
 
 		if ( isPresenting ) {
 
-			var size = renderer.getSize();
-			cachedWidth = size.width;
-			cachedHeight = size.height;
+			rendererPixelRatio = renderer.getPixelRatio();
+			rendererSize = renderer.getSize();
 
 			var eyeParamsL = vrHMD.getEyeParameters( 'left' );
 			renderer.setSize( eyeParamsL.renderWidth * 2, eyeParamsL.renderHeight, false );
 
 		} else {
 
-			renderer.setSize( cachedWidth, cachedHeight );
+			renderer.setPixelRatio( rendererPixelRatio );
+			renderer.setSize( rendererSize.width, rendererSize.height );
 
 		}
 
@@ -145,7 +151,7 @@ THREE.VREffect = function ( renderer, onError ) {
 
 			}
 
-			if ( !deprecatedAPI ) {
+			if ( ! isDeprecatedAPI ) {
 
 				if ( boolean ) {
 
@@ -178,7 +184,7 @@ THREE.VREffect = function ( renderer, onError ) {
 
 			}
 
-		});
+		} );
 
 	};
 
@@ -218,7 +224,7 @@ THREE.VREffect = function ( renderer, onError ) {
 			var eyeParamsL = vrHMD.getEyeParameters( 'left' );
 			var eyeParamsR = vrHMD.getEyeParameters( 'right' );
 
-			if ( !deprecatedAPI ) {
+			if ( ! isDeprecatedAPI ) {
 
 				eyeTranslationL.fromArray( eyeParamsL.offset );
 				eyeTranslationR.fromArray( eyeParamsR.offset );
@@ -259,8 +265,10 @@ THREE.VREffect = function ( renderer, onError ) {
 			camera.matrixWorld.decompose( cameraL.position, cameraL.quaternion, cameraL.scale );
 			camera.matrixWorld.decompose( cameraR.position, cameraR.quaternion, cameraR.scale );
 
-			cameraL.translateX( eyeTranslationL.x * this.scale );
-			cameraR.translateX( eyeTranslationR.x * this.scale );
+			var scale = this.scale;
+			cameraL.translateOnAxis( eyeTranslationL, scale );
+			cameraR.translateOnAxis( eyeTranslationR, scale );
+
 
 			// render left eye
 			renderer.setViewport( renderRectL.x, renderRectL.y, renderRectL.width, renderRectL.height );
@@ -280,7 +288,7 @@ THREE.VREffect = function ( renderer, onError ) {
 
 			}
 
-			if ( !deprecatedAPI ) {
+			if ( ! isDeprecatedAPI ) {
 
 				vrHMD.submitFrame();
 
