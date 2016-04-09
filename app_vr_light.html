@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>THREE.MMDLoader sample - VR</title>
+		<title>THREE.MMDLoader sample - VR (light)</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
@@ -29,14 +29,13 @@
 	<body>
 		<div id="info">
 		<a href="https://github.com/takahirox/three.js" target="_blank">MMDLoader</a><br />
-		VR<br />
+		VR (light)<br />
 		<br />
 		Copyright
 		<a href="http://threejs.org" target="_blank">three.js</a><br />
 		<a href="http://www.geocities.jp/higuchuu4/index_e.htm" target="_blank">Model Data</a><br />
 		<a href="http://www.nicovideo.jp/watch/sm13147122" target="_blank">Dance Data</a><br />
 		<a href="http://www.nicovideo.jp/watch/sm11938255" target="_blank">Audio Data</a><br />
-		<a href="http://www.deviantart.com/art/MMD-Rainbow-Stage-212433590" target="_blank">Stage Data</a><br />
 		<a href="http://www.nicovideo.jp/watch/sm19168559" target="_blank">Camera Data(Original)</a><br />
 		</div>
 
@@ -109,10 +108,10 @@
 
 				//
 
-				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer = new THREE.WebGLRenderer( { antialias: false } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
-				renderer.setClearColor( new THREE.Color( 0xffffff ) );
+				renderer.setClearColor( new THREE.Color( 0x000000 ) );
 				container.appendChild( renderer.domElement );
 
 				// model
@@ -129,7 +128,6 @@
 
 				var modelFile = 'model/miku/miku_v2.pmd';
 				var vmdFiles = [ 'vmd/wavefile_v2.vmd' ];
-				var stageFile = 'model/stage/stage.pmd';
 				var audioFile = 'audio/wavefile_short.mp3';
 				var audioParams = { delayTime: 160 * 1 / 30 };
 
@@ -137,6 +135,7 @@
 				effect = new THREE.VREffect( renderer );
 
 				helper = new THREE.MMDHelper( renderer );
+				helper.doOutlineDrawing = false;
 				helper.setEffect( effect );
 
 				if ( WEBVR.isAvailable() === true ) {
@@ -155,19 +154,7 @@
 					helper.add( mesh );
 					helper.setAnimation( mesh );
 
-					/*
-					 * Note: You must set Physics
-					 *       before you add mesh to scene or any other 3D object.
-					 * Note: Physics calculation is pretty heavy.
-					 *       It may not be acceptable for most mobile devices yet.
-			 		 */
-					if ( ! isMobileDevice() ) {
-
-						helper.setPhysics( mesh );
-
-					}
-
-					loader.loadModel( stageFile, function ( stage ) {
+					{
 
 						loader.loadAudio( audioFile, function ( audio, listener ) {
 
@@ -183,7 +170,6 @@
 
 							scene.add( audio );
 							scene.add( listener );
-							scene.add( stage );
 							scene.add( mesh );
 							scene.add( dummy );
 
@@ -191,7 +177,7 @@
 
 						}, onProgress, onError );
 
-					}, onProgress, onError );
+					}
 
 				}, onProgress, onError );
 
@@ -247,33 +233,6 @@
 					renderer.render( scene, camera );
 
 				}
-
-			}
-
-			// easy mobile device detection
-			function isMobileDevice () {
-
-				if ( navigator === undefined || navigator.userAgent === undefined ) {
-
-					return true;
-
-				}
-
-				var s = navigator.userAgent;
-
-				if (    s.match( /iPhone/i )
-//				     || s.match( /iPad/i )
-				     || s.match( /iPod/i )
-				     || s.match( /webOS/i )
-				     || s.match( /BlackBerry/i )
-				     || ( s.match( /Windows/i ) && s.match( /Phone/i ) )
-				     || ( s.match( /Android/i ) && s.match( /Mobile/i ) ) ) {
-
-					return true;
-
-				}
-
-				return false;
 
 			}
 
