@@ -107,7 +107,8 @@
 				directionalLight.shadow.camera.bottom = -20;
 
 				// Model specific Shadow parameters
-				renderer.shadowMap.cullFace = THREE.CullFaceNone;
+				renderer.shadowMap.renderSingleSided = false;
+				renderer.shadowMap.renderReverseSided = false;
 				directionalLight.shadow.bias = -0.001;
 
 				// model
