@@ -674,15 +674,15 @@
 
 				}
 
-				for ( var i = 0; i < mesh.geometry.morphAnimations.length; i++ ) {
+				for ( var i = 0; i < mesh.geometry.animations.length; i++ ) {
 
-					var tracks = mesh.geometry.morphAnimations[ i ].tracks;
+					var tracks = mesh.geometry.animations[ i ].tracks;
 
 					for ( var j = 0; j < tracks.length; j++ ) {
 
 						if ( tracks[ j ].name === ".morphTargetInfluences[" + index + "]" ) {
 
-							mesh.geometry.morphAnimations[ i ].tracks.splice( j, 1 );
+							mesh.geometry.animations[ i ].tracks.splice( j, 1 );
 							break;
 
 						}
