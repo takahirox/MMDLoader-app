@@ -17,6 +17,10 @@ var files = {
 		{
 			name: "360 panorama(Medel View)",
 			url: "http://web-k.github.io/medelview/model/"
+		},
+		{
+			name: "MMDxThree.jsxVR | CardboardClub",
+			url: "http://cardboardclub.jp/study/160609_mmd/"
 		}
 	]
 };
