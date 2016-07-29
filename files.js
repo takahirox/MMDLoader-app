@@ -6,7 +6,6 @@ var files = {
 		"app_speak",
 		"app_stereo",
 		"app_vr",
-		"app_vr_light",
 		"app_walk"
 	],
 	"External Links": [
