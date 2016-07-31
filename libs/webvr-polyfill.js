@@ -5745,6 +5745,9 @@ FusionPoseSensor.prototype.getPosition = function() {
 };
 
 FusionPoseSensor.prototype.getOrientation = function() {
+
+  // return [0,0,0,-1]; // for PC debug by @takahirox
+
   // Convert from filter space to the the same system used by the
   // deviceorientation event.
   var orientation = this.filter.getOrientation();
