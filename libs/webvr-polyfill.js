@@ -1949,7 +1949,6 @@ CardboardDistorter.prototype.submitFrame = function() {
       self.realClearColor.call(gl, 0, 0, 0, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
     }
-
     // Bind distortion program and mesh
     gl.useProgram(self.program);
 
@@ -1978,11 +1977,13 @@ CardboardDistorter.prototype.submitFrame = function() {
     self.realBindFramebuffer.call(self.gl, gl.FRAMEBUFFER, self.framebuffer);
 
     // If preserveDrawingBuffer == false clear the framebuffer
+    // comment out by @takahirox
+/*
     if (!self.ctxAttribs.preserveDrawingBuffer) {
       self.realClearColor.call(gl, 0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
     }
-
+*/
     if (!WebVRConfig.DIRTY_SUBMIT_FRAME_BINDINGS) {
       self.realBindFramebuffer.call(gl, gl.FRAMEBUFFER, self.lastBoundFramebuffer);
     }
