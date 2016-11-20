@@ -81,6 +81,10 @@
 
 			var cameraControls;
 
+			var miku;
+			var world;
+			var boxes = [];
+
 			var ready = false;
 
 			var mouseX = 0, mouseY = 0;
@@ -189,7 +193,7 @@
 			};
 
 			init();
-			animate();
+			update();
 
 			function init() {
 
@@ -223,8 +227,6 @@
 
 				// model
 
-				createGround();
-
 				helper = new THREE.MMDHelper( renderer );
 
 				loader = new THREE.MMDLoader();
@@ -233,6 +235,7 @@
 				loadModels( function () {
 
 					var mesh = helper.meshes[ 0 ];
+					miku = mesh;
 
 					loadVpds( mesh, function () {
 
@@ -293,20 +296,14 @@
 						var mesh = object;
 
 						helper.add( mesh );
+						helper.setPhysics( mesh );
 
-						/*
-						 * Note: You must set Physics
-						 *       before you add mesh to scene or any other 3D object.
-						 * Note: Physics calculation is pretty heavy.
-						 *       It may not be acceptable for most mobile devices yet.
-				 		 */
-						if ( ! isMobileDevice() ) {
-
-							helper.setPhysics( mesh );
-
-						}
+						world = mesh.physics.world;
 
 						scene.add( mesh );
+
+						createGround();
+						createBoxes();
 
 						resetPosition();
 
@@ -394,70 +391,67 @@
 
 			}
 
+			function createRigidBody ( size, weight, position ) {
+
+				var shape = new Ammo.btBoxShape( new Ammo.btVector3( size[ 0 ], size[ 1 ], size[ 2 ] ) );
+				var localInertia = new Ammo.btVector3( 0, 0, 0 );
+				shape.calculateLocalInertia( weight, localInertia );
+
+				var form = new Ammo.btTransform();
+				form.setIdentity();
+				form.setOrigin( new Ammo.btVector3( position.x, position.y, position.z ) );
+
+				var state = new Ammo.btDefaultMotionState( form );
+				var info = new Ammo.btRigidBodyConstructionInfo( weight, state, shape, localInertia );
+
+				return new Ammo.btRigidBody( info );
+
+			}
+
 			function createGround () {
 
-				var canvasSize = 64;
-				var lineSize = 2;
+				var gridHelper = new THREE.GridHelper( 1000, 500 );
+				gridHelper.position.y = -15;
 
-				var canvas = document.createElement( 'canvas' );
-				canvas.width = canvasSize;
-				canvas.height = canvasSize;
+				var body = createRigidBody( [ 1000, 1, 1000 ], 0, gridHelper.position );
+				body.setRestitution( 1 );
+				body.setFriction( 1 );
+				body.setDamping( 0, 0 );
+				body.setSleepingThresholds( 0, 0 );
+				world.addRigidBody( body );
 
-				var ctx = canvas.getContext( '2d' );
-				ctx.fillStyle = 'rgb( 0, 0, 0 )';
-				ctx.fillRect( 0, 0, canvasSize, canvasSize );
-				ctx.fillStyle = 'rgb( 255, 255, 255 )';
-				ctx.fillRect( lineSize, lineSize, canvasSize - lineSize * 2, canvasSize - lineSize * 2 );
+				scene.add( gridHelper );
 
-				var texture = new THREE.Texture( canvas );
-				texture.wrapS = THREE.RepeatWrapping;
-				texture.wrapT = THREE.RepeatWrapping;
-				texture.needsUpdate = true;
+			}
 
-				var geometry = new THREE.PlaneGeometry( 1024, 1024 );
-				geometry.computeFaceNormals();
-				geometry.computeVertexNormals();
+			function createBoxes () {
 
-				var uvs = geometry.faceVertexUvs[ 0 ];
+				var geometry = new THREE.BoxGeometry( 4, 4, 4 );
+				var material = new THREE.MeshPhongMaterial( { color: 0x444444 } );
 
-				for ( var i = 0; i < uvs.length; i++ ) {
+				for ( var i = 0; i < 20; i ++ ) {
 
-					for ( var j = 0; j < uvs[ i ].length; j++ ) {
+					for ( var j = 0; j < 5; j ++ ) {
 
-						var uv = uvs[ i ][ j ];
+						var mesh = new THREE.Mesh( geometry, material );
+						mesh.position.x = -38 + i * 4;
+						mesh.position.y = -13 + j * 4.1;
+						mesh.position.z = 40;
 
-						uv.x = uv.x === 0.0 ? -64.0 : 64.0;
-						uv.y = uv.y === 0.0 ? -64.0 : 64.0;
+						var body = createRigidBody( [ 2, 2, 2 ], 1.0, mesh.position );
+						body.setSleepingThresholds( 0, 0 );
+						world.addRigidBody( body );
+
+						mesh.body = body;
+						mesh.ammoTransform = new Ammo.btTransform();
+						mesh.ammoQuaternion = new Ammo.btQuaternion( 0, 0, 0, 1 );
+
+						boxes.push( mesh );
+						scene.add( mesh );
 
 					}
 
 				}
-
-				var geometry2 = geometry.clone();
-
-				var ground = new THREE.Mesh(
-					geometry,
-					new THREE.MeshBasicMaterial( {
-						map: texture,
-						side: THREE.FrontSide
-					} )
-				);
-				ground.rotateX( - Math.PI / 2 );
-				ground.position.copy( modelParams[ 0 ].position );
-				scene.add( ground );
-
-				var ground2 = new THREE.Mesh(
-					geometry2,
-					new THREE.MeshBasicMaterial( {
-						map: texture,
-						opacity: 0.25,
-						transparent: true,
-						side: THREE.BackSide
-					} )
-				);
-				ground2.rotateX( -Math.PI / 2 );
-				ground2.position.copy( modelParams[ 0 ].position );
-				scene.add( ground2 );
 
 			}
 
@@ -475,14 +469,9 @@
 
 			//
 
-			function animate() {
+			function update() {
 
-				requestAnimationFrame( animate );
-				render();
-
-			}
-
-			function render() {
+				requestAnimationFrame( update );
 
 				if ( ready ) {
 
@@ -491,6 +480,7 @@
 					var delta = clock.getDelta();
 					manageMove( delta );
 					helper.animate( delta );
+					updateBoxes();
 					helper.render( scene, camera );
 
 				} else {
@@ -502,30 +492,24 @@
 
 			}
 
-			// easy mobile device detection
-			function isMobileDevice () {
+			function updateBoxes () {
 
-				if ( navigator === undefined || navigator.userAgent === undefined ) {
+				for ( var i = 0, il = boxes.length; i < il; i ++ ) {
 
-					return true;
+					var box = boxes[ i ];
+					var body = box.body;
+					var form = box.ammoTransform;
+					var q = box.ammoQuaternion;
 
-				}
+					body.getMotionState().getWorldTransform( form );
 
-				var s = navigator.userAgent;
+					var o = form.getOrigin();
+					form.getBasis().getRotation( q );
 
-				if (    s.match( /iPhone/i )
-//				     || s.match( /iPad/i )
-				     || s.match( /iPod/i )
-				     || s.match( /webOS/i )
-				     || s.match( /BlackBerry/i )
-				     || ( s.match( /Windows/i ) && s.match( /Phone/i ) )
-				     || ( s.match( /Android/i ) && s.match( /Mobile/i ) ) ) {
-
-					return true;
+					box.position.set( o.x(), o.y(), o.z() );
+					box.quaternion.set( q.x(), q.y(), q.z(), q.w() );
 
 				}
-
-				return false;
 
 			}
 
