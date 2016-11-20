@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>THREE.MMDLoader sample - intaractive</title>
+		<title>Three.js MMDLoader app Interactive</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
@@ -17,9 +17,8 @@
 				position: absolute;
 				top: 10px;
 				width: 100%;
-				text-align: right;
+				text-align: center;
 				right: 20px;
-				z-index: 100;
 				display: block;
 			}
 			#info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
@@ -28,32 +27,30 @@
 
 	<body>
 		<div id="info">
-		<a href="https://github.com/takahirox/three.js" target="_blank">MMDLoader</a><br />
-		Interactive app<br />
-		<br />
-		Copyright<br />
-		<a href="http://threejs.org" target="_blank">three.js</a><br />
-		<a href="http://www.geocities.jp/higuchuu4/index_e.htm" target="_blank">Model Data</a><br />
-		<a href="http://nicomas.main.jp/mmddata/" target="_blank">Motion Data</a><br />
+		<a href="http://threejs.org" target="_blank">three.js</a> - MMDLoader app Interactive<br />
+		<a href="https://github.com/takahirox/MMDLoader-app#readme" target="_blank">MMD Assets license</a><br />
+		Copyright
+		<a href="http://www.geocities.jp/higuchuu4/index_e.htm" target="_blank">Model Data</a>
+		<a href="http://nicomas.main.jp/mmddata/" target="_blank">Motion Data</a>
 		</div>
 
-		<script src="three.js/three.min.js"></script>
+		<script src="three.js/three.js"></script>
 
-		<script src="libs/charsetencoder.min.js"></script>
+		<script src="libs/mmdparser.min.js"></script>
 		<script src="libs/ammo.js"></script>
 		<script src="three.js/TGALoader.js"></script>
 		<script src="three.js/MMDLoader.js"></script>
+		<script src="three.js/OutlineEffect.js"></script>
 		<script src="three.js/CCDIKSolver.js"></script>
 		<script src="three.js/MMDPhysics.js"></script>
 
 		<script src="three.js/Detector.js"></script>
-		<script src="libs/stats.min.js"></script>
 
 		<script>
 
-			var container, stats;
+			var container;
 
-			var camera, scene, renderer;
+			var camera, scene, renderer, effect;
 			var helper, loader;
 			var clickableCubes = [];
 			var eyesSensor;
@@ -81,10 +78,12 @@
 				index: 0
 			};
 
+			// see the license https://github.com/takahirox/MMDLoader-app#readme for these assets
+
 			var modelParams = [
 				{
 					name: 'miku',
-					file: 'model/miku/miku_v2.pmd',
+					file: 'https://cdn.rawgit.com/mrdoob/three.js/dev/examples/models/mmd/miku/miku_v2.pmd',
 					position: new THREE.Vector3( 0, -15,  0 )
 				}
 			];
@@ -101,10 +100,10 @@
 					name: 'bow',
 					motions: [
 						{
-							files: [ 'vmd/imas/azusa_bow1.vmd', 'vmd/imas/mouth1.vmd', 'vmd/imas/face23.vmd' ]
+							files: [ 'assets/vmd/imas/azusa_bow1.vmd', 'assets/vmd/imas/mouth1.vmd', 'assets/vmd/imas/face23.vmd' ]
 						},
 						{
-							files: [ 'vmd/imas/azusa_bow2.vmd', 'vmd/imas/face23.vmd' ]
+							files: [ 'assets/vmd/imas/azusa_bow2.vmd', 'assets/vmd/imas/face23.vmd' ]
 						}
 					]
 				},
@@ -112,7 +111,7 @@
 					name: 'hair',
 					motions: [
 						{
-							files: [ 'vmd/imas/makoto_hair.vmd', 'vmd/imas/face23.vmd' ]
+							files: [ 'assets/vmd/imas/makoto_hair.vmd', 'assets/vmd/imas/face23.vmd' ]
 						}
 					]
 				},
@@ -120,10 +119,10 @@
 					name: 'mouth',
 					motions: [
 						{
-							files: [ 'vmd/imas/yukiho_mouth1.vmd', 'vmd/imas/mouth1.vmd', 'vmd/imas/face23.vmd' ]
+							files: [ 'assets/vmd/imas/yukiho_mouth1.vmd', 'assets/vmd/imas/mouth1.vmd', 'assets/vmd/imas/face23.vmd' ]
 						},
 						{
-							files: [ 'vmd/imas/yukiho_mouth2.vmd', 'vmd/imas/face23.vmd' ]
+							files: [ 'assets/vmd/imas/yukiho_mouth2.vmd', 'assets/vmd/imas/face23.vmd' ]
 						}
 					]
 				},
@@ -131,10 +130,10 @@
 					name: 'rise_right_hand',
 					motions: [
 						{
-							files: [ 'vmd/imas/yayoi_right_hand_rise1.vmd', 'vmd/imas/mouth1.vmd', 'vmd/imas/face24.vmd' ]
+							files: [ 'assets/vmd/imas/yayoi_right_hand_rise1.vmd', 'assets/vmd/imas/mouth1.vmd', 'assets/vmd/imas/face24.vmd' ]
 						},
 						{
-							files: [ 'vmd/imas/yayoi_right_hand_rise2.vmd', 'vmd/imas/face24.vmd' ]
+							files: [ 'assets/vmd/imas/yayoi_right_hand_rise2.vmd', 'assets/vmd/imas/face24.vmd' ]
 						}
 					]
 				},
@@ -142,20 +141,20 @@
 					name: 'left_hand',
 					motions: [
 						{
-							files: [ 'vmd/imas/ritsuko_left_hand1.vmd', 'vmd/imas/mouth1.vmd', 'vmd/imas/face24.vmd' ]
+							files: [ 'assets/vmd/imas/ritsuko_left_hand1.vmd', 'assets/vmd/imas/mouth1.vmd', 'assets/vmd/imas/face24.vmd' ]
 						},
 						{
-							files: [ 'vmd/imas/ritsuko_left_hand2.vmd', 'vmd/imas/face24.vmd' ]
+							files: [ 'assets/vmd/imas/ritsuko_left_hand2.vmd', 'assets/vmd/imas/face24.vmd' ]
 						}
 					]
 				},				{
 					name: 'surprise',
 					motions: [
 						{
-							files: [ 'vmd/imas/makoto_surprise1.vmd', 'vmd/imas/mouth1.vmd', 'vmd/imas/face16.vmd' ]
+							files: [ 'assets/vmd/imas/makoto_surprise1.vmd', 'assets/vmd/imas/mouth1.vmd', 'assets/vmd/imas/face16.vmd' ]
 						},
 						{
-							files: [ 'vmd/imas/makoto_surprise2.vmd', 'vmd/imas/face16.vmd' ]
+							files: [ 'assets/vmd/imas/makoto_surprise2.vmd', 'assets/vmd/imas/face16.vmd' ]
 						}
 					]
 				},
@@ -163,10 +162,10 @@
 					name: 'guard',
 					motions: [
 						{
-							files: [ 'vmd/imas/makoto_guard1.vmd', 'vmd/imas/mouth1.vmd', 'vmd/imas/face22.vmd' ]
+							files: [ 'assets/vmd/imas/makoto_guard1.vmd', 'assets/vmd/imas/mouth1.vmd', 'assets/vmd/imas/face22.vmd' ]
 						},
 						{
-							files: [ 'vmd/imas/makoto_guard2.vmd', 'vmd/imas/face22.vmd' ]
+							files: [ 'assets/vmd/imas/makoto_guard2.vmd', 'assets/vmd/imas/face22.vmd' ]
 						}
 					]
 				}
@@ -294,12 +293,12 @@
 				renderer.setClearColor( new THREE.Color( 0xffffff ) );
 				container.appendChild( renderer.domElement );
 
+				effect = new THREE.OutlineEffect( renderer );
+
 				// model
 
-				helper = new THREE.MMDHelper( renderer );
-
+				helper = new THREE.MMDHelper();
 				loader = new THREE.MMDLoader();
-				loader.setDefaultTexturePath( './default/' );
 
 				loadModels( function () {
 
@@ -339,6 +338,8 @@
 						startBlink( mesh );
 						startMotion( mesh, 'bow' );
 
+						scene.add( mesh );
+
 						ready = true;
 
 					} );
@@ -375,20 +376,7 @@
 						mesh.position.copy( param.position );
 
 						helper.add( mesh );
-
-						/*
-						 * Note: You must set Physics
-						 *       before you add mesh to scene or any other 3D object.
-						 * Note: Physics calculation is pretty heavy.
-						 *       It may not be acceptable for most mobile devices yet.
-				 		 */
-						if ( ! isMobileDevice() ) {
-
-							helper.setPhysics( mesh );
-
-						}
-
-						scene.add( mesh );
+						helper.setPhysics( mesh );
 
 						load( index + 1 );
 
@@ -443,7 +431,7 @@
 				for ( var i = 0; i < bones.length; i++ ) {
 
 					var b = bones[ i ];
-					boneDictionary[ b.originalName ] = i;
+					boneDictionary[ b.name ] = i;
 
 				}
 
@@ -526,7 +514,7 @@
 				camera.aspect = window.innerWidth / window.innerHeight;
 				camera.updateProjectionMatrix();
 
-				renderer.setSize( window.innerWidth, window.innerHeight );
+				effect.setSize( window.innerWidth, window.innerHeight );
 
 			}
 
@@ -544,43 +532,29 @@
 				if ( ready ) {
 
 					var delta = clock.getDelta();
+					var mesh = helper.meshes[ 0 ];
+
 					manageAnimation( delta );
-					helper.animate( delta );
-					helper.render( scene, camera );
 
-				} else {
+					mesh.mixer.update( delta );
 
-					renderer.clear();
-					renderer.render( scene, camera );
+					helper.backupBones( mesh );
 
-				}
+					mesh.ikSolver.update();
+					mesh.physics.update( delta );
 
-			}
-
-			// easy mobile device detection
-			function isMobileDevice () {
-
-				if ( navigator === undefined || navigator.userAgent === undefined ) {
-
-					return true;
+					//helper.animate( delta );
 
 				}
 
-				var s = navigator.userAgent;
+				effect.render( scene, camera );
 
-				if (    s.match( /iPhone/i )
-//				     || s.match( /iPad/i )
-				     || s.match( /iPod/i )
-				     || s.match( /webOS/i )
-				     || s.match( /BlackBerry/i )
-				     || ( s.match( /Windows/i ) && s.match( /Phone/i ) )
-				     || ( s.match( /Android/i ) && s.match( /Mobile/i ) ) ) {
+				if ( ready ) {
 
-					return true;
+					var mesh = helper.meshes[ 0 ];
+					helper.backupBones( mesh );
 
 				}
-
-				return false;
 
 			}
 
