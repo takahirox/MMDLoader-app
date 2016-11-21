@@ -338,24 +338,15 @@
 
 					updateModel( mesh );
 
-					mesh.mixer.update( delta );
-
+					// Workaround for AnimationMixer issue. See MMDHelper.animateOneMesh()
 					helper.backupBones( mesh );
 
-					mesh.physics.update( delta );
-
-					//helper.animate( delta );
+					helper.animate( delta );
 
 				}
 
 				effect.render( scene, camera );
 
-				if ( ready ) {
-
-					var mesh = helper.meshes[ 0 ];
-					helper.backupBones( mesh );
-
-				}
 
 			}
 

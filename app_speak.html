@@ -410,27 +410,11 @@
 
 				if ( ready ) {
 
-					var delta = clock.getDelta();
-					var mesh = helper.meshes[ 0 ];
-
-					mesh.mixer.update( delta );
-
-					helper.backupBones( mesh );
-
-					mesh.physics.update( delta );
-
-					//helper.animate( clock.getDelta() );
+					helper.animate( clock.getDelta() );
 
 				}
 
 				effect.render( scene, camera );
-
-				if ( ready ) {
-
-					var mesh = helper.meshes[ 0 ];
-					helper.backupBones( mesh );
-
-				}
 
 			}
 
@@ -457,6 +441,9 @@
 				pos.sub( bone.getWorldPosition() );
 
 				mesh.skeleton.bones[ boneDictionary[ headBoneName ] ].lookAt( pos );
+
+				// Workaround for AnimationMixer issue. See MMDHelper.animateOneMesh();
+				helper.backupBones( mesh );
 
 			}
 
