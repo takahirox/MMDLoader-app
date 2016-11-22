@@ -2,6 +2,7 @@ var files = {
 	"App": [
 		"app_facetracking",
 		"app_interactive",
+		"app_physics",
 		"app_shadow",
 		"app_speak",
 		"app_stereo",
