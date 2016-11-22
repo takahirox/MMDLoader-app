@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>Three.js MMDLoader app Walk</title>
+		<title>Three.js MMDLoader app Physics</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
@@ -37,7 +37,7 @@
 
 	<body>
 		<div id="info">
-		<a href="http://threejs.org" target="_blank">three.js</a> - MMDLoader app Walk<br />
+		<a href="http://threejs.org" target="_blank">three.js</a> - MMDLoader app Physics<br />
 		<a href="https://github.com/takahirox/MMDLoader-app#readme" target="_blank">MMD Assets license</a><br />
 		Copyright
 		<a href="http://threejs.org" target="_blank">three.js</a>
@@ -81,6 +81,7 @@
 
 			var miku;
 			var world;
+			var boxes = [];
 
 			var ready = false;
 
@@ -304,6 +305,7 @@
 						scene.add( mesh );
 
 						createGround();
+						createBoxes();
 
 						load( index + 1 );
 
@@ -422,6 +424,37 @@
 
 			}
 
+			function createBoxes () {
+
+				var geometry = new THREE.BoxBufferGeometry( 4, 4, 4 );
+				var material = new THREE.MeshPhongMaterial( { color: 0x444444 } );
+
+				for ( var i = 0; i < 20; i ++ ) {
+
+					for ( var j = 0; j < 5; j ++ ) {
+
+						var mesh = new THREE.Mesh( geometry, material );
+						mesh.position.x = -38 + i * 4;
+						mesh.position.y = -13 + j * 4.1;
+						mesh.position.z = 40;
+
+						var body = createRigidBody( [ 2, 2, 2 ], 1.0, mesh.position );
+						body.setSleepingThresholds( 0, 0 );
+						world.addRigidBody( body );
+
+						mesh.body = body;
+						mesh.ammoTransform = new Ammo.btTransform();
+						mesh.ammoQuaternion = new Ammo.btQuaternion( 0, 0, 0, 1 );
+
+						boxes.push( mesh );
+						scene.add( mesh );
+
+					}
+
+				}
+
+			}
+
 			function onWindowResize () {
 
 				windowHalfX = window.innerWidth / 2;
@@ -447,10 +480,32 @@
 					var delta = clock.getDelta();
 					manageMove( delta );
 					helper.animate( delta );
+					updateBoxes();
 
 				}
 
 				effect.render( scene, camera );
+
+			}
+
+			function updateBoxes () {
+
+				for ( var i = 0, il = boxes.length; i < il; i ++ ) {
+
+					var box = boxes[ i ];
+					var body = box.body;
+					var form = box.ammoTransform;
+					var q = box.ammoQuaternion;
+
+					body.getMotionState().getWorldTransform( form );
+
+					var o = form.getOrigin();
+					form.getBasis().getRotation( q );
+
+					box.position.set( o.x(), o.y(), o.z() );
+					box.quaternion.set( q.x(), q.y(), q.z(), q.w() );
+
+				}
 
 			}
 
