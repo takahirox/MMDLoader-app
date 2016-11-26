@@ -4,6 +4,7 @@ var files = {
 		"app_facetracking",
 		"app_interactive",
 		"app_physics",
+		"app_postprocessing_unreal_bloom",
 		"app_shadow",
 		"app_speak",
 		"app_stereo",
