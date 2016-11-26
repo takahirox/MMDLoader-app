@@ -4,6 +4,7 @@ var files = {
 		"app_facetracking",
 		"app_interactive",
 		"app_physics",
+		"app_postprocessing_blur",
 		"app_postprocessing_lowresolution",
 		"app_postprocessing_stereo",
 		"app_postprocessing_unreal_bloom",
