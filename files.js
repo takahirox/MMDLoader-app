@@ -5,6 +5,7 @@ var files = {
 		"app_interactive",
 		"app_physics",
 		"app_postprocessing_lowresolution",
+		"app_postprocessing_stereo",
 		"app_postprocessing_unreal_bloom",
 		"app_shadow",
 		"app_speak",
