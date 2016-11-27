@@ -3,6 +3,7 @@ var files = {
 		"app_deferred",
 		"app_facetracking",
 		"app_interactive",
+		"app_music_live",
 		"app_physics",
 		"app_postprocessing_blur",
 		"app_postprocessing_lowresolution",
