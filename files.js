@@ -7,6 +7,7 @@ var files = {
 		"app_physics",
 		"app_postprocessing_blur",
 		"app_postprocessing_lowresolution",
+		"app_postprocessing_ripple",
 		"app_postprocessing_stereo",
 		"app_postprocessing_unreal_bloom",
 		"app_shadow",
