@@ -13,7 +13,8 @@ var files = {
 		"app_speak",
 		"app_stereo",
 		"app_vr",
-		"app_walk"
+		"app_walk",
+		"app_water"
 	],
 	"External Links": [
 		{
