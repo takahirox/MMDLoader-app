@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Three.js MMDLoader app GPU Particles</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #000;
+				color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				color: #fff;
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				text-align: center;
+				display:block;
+			}
+			#info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
+		</style>
+	</head>
+	<body>
+		<div id="info">
+		<a href="http://threejs.org" target="_blank">three.js</a> - MMDLoader GPU particles<br />
+		<a href="https://github.com/takahirox/MMDLoader-app#readme" target="_blank">MMD Assets license</a><br />
+		Copyright<br />
+		<a href="http://threejs.org" target="_blank">three.js</a>
+		<a href="http://www.geocities.jp/higuchuu4/index_e.htm" target="_blank">Model Data</a>
+		<a href="http://www.nicovideo.jp/watch/sm13147122" target="_blank">Dance Data</a>
+		</div>
+
+		<script src="https://rawgit.com/mrdoob/three.js/r87/build/three.js"></script>
+
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/mmdparser.min.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/TGALoader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/MMDLoader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/CCDIKSolver.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/MMDPhysics.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/effects/OutlineEffect.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/ammo.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/controls/OrbitControls.js"></script>
+
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/postprocessing/EffectComposer.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/postprocessing/ShaderPass.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/shaders/CopyShader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/shaders/LuminosityHighPassShader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/stats.min.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/dat.gui.min.js"></script>
+
+		<script>
+
+			var clock, elapsedTime, periodTime;
+			var scene, camera, mesh, points, renderer, effect, composer, clock;
+			var scene2, orthCamera, capturePoints, velocityTexture, velocityMaterial, positionMaterial;
+
+			var textureWidth = 256;
+			var textureHeight = 512;
+			var particlesSet = 10;
+			var particlesSetIndex = 0;
+			var particleSpeed = 40.0;
+
+			var modelFile = "https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/miku/miku_v2.pmd";
+			var vmdFiles = [ "https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/vmds/wavefile_v2.vmd" ];
+
+			var helper = new THREE.MMDHelper();
+			var loader = new THREE.MMDLoader();
+
+			loader.load( modelFile, vmdFiles, onLoad );
+
+			function onLoad( model ) {
+
+				mesh = model;
+				mesh.frustumCulled = false;
+
+
+				//
+
+				helper.add( mesh );
+				helper.setAnimation( mesh );
+				helper.setPhysics( mesh );
+
+				helper.unifyAnimationDuration( { afterglow: 2.0 } );
+
+
+				// create renderer/effect
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				document.body.appendChild( renderer.domElement );
+
+				effect = new THREE.OutlineEffect( renderer );
+
+
+				// create renderTargets
+
+				var renderTargetPosition1 = new THREE.WebGLRenderTarget( textureWidth, textureHeight, {
+
+					wrapS: THREE.ClampToEdgeWrapping,
+					wrapT: THREE.ClampToEdgeWrapping,
+					minFilter: THREE.NearestFilter,
+					magFilter: THREE.NearestFilter,
+					type: THREE.FloatType,
+					format: THREE.RGBAFormat,
+					stencilBuffer: false
+
+				} );
+
+				var renderTargetPosition2 = renderTargetPosition1.clone();
+				var renderTargetVelocity = renderTargetPosition1.clone();
+
+
+				// create scene/camera/light for final rendering
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0x000000 );
+
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.001, 2000 );
+				camera.position.z = 50;
+
+				var light = new THREE.DirectionalLight( 0x222222 );
+				light.position.set( 10, 10, 10 );
+				scene.add( light );
+
+				// create scene/camera for GPU calculation
+
+				scene2 = new THREE.Scene();
+
+				orthCamera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+
+
+				// create controls
+
+				var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+
+				// create stats
+
+				var stats = new Stats();
+				document.body.appendChild( stats.dom );
+
+
+				// create clock
+
+				clock = new THREE.Clock();
+				elapsedTime = 0.0;
+				periodTime = 0.0;
+
+
+				// create composer
+
+				var copyShader = new THREE.ShaderPass( THREE.CopyShader );
+				copyShader.renderToScreen = true;
+
+				var bloomPass = new THREE.UnrealBloomPass(
+					new THREE.Vector2( window.innerWidth, window.innerHeight ),
+					0.5, 0.1, 0.5
+				);
+				bloomPass.enabled = false;
+
+				composer = new THREE.EffectComposer( renderer );
+				composer.setSize( window.innerWidth, window.innerHeight );
+				composer.addPass( bloomPass );
+				composer.addPass( copyShader );
+
+
+				/**
+				 * Creates Points object from Mesh object for particle rendering
+				 */
+				function createPoints( mesh ) {
+
+					var count = mesh.geometry.attributes.position.count;
+					var num = count * particlesSet;
+
+					var ids = new Float32Array( num );
+					var colors = new Float32Array( num * 4 );
+
+					for ( var i = 0; i < num; i ++ ) {
+
+						ids[ i ] = i;
+
+					}
+
+					var groups = mesh.geometry.groups;
+					var indices = mesh.geometry.index.array;
+
+					var groupIndex = -1;
+					var materialIndex = -1;
+					var nextVertexIndex = 0;
+
+					for ( var i = 0, il = indices.length; i < il; i ++ ) {
+
+						if ( i === nextVertexIndex ) {
+
+							groupIndex++;
+							materialIndex = groups[ groupIndex ].materialIndex;
+							nextVertexIndex += groups[ groupIndex ].count;
+
+						}
+
+						var color = mesh.material[ materialIndex ].color;
+						var vertexIndex = indices[ i ];
+
+						var baseColor = 0.3;
+
+						for ( var j = 0; j < particlesSet; j ++ ) {
+
+							colors[ ( count * j + vertexIndex ) * 4 + 0 ] = baseColor + color.r * ( 1.0 - baseColor );
+							colors[ ( count * j + vertexIndex ) * 4 + 1 ] = baseColor + color.g * ( 1.0 - baseColor );
+							colors[ ( count * j + vertexIndex ) * 4 + 2 ] = baseColor + color.b * ( 1.0 - baseColor );
+
+						}
+
+					}
+
+					var geometry = new THREE.BufferGeometry();
+
+					geometry.addAttribute( 'id', new THREE.Float32BufferAttribute( ids, 1 ) );
+					geometry.addAttribute( 'position', new THREE.Float32BufferAttribute( new Float32Array( num * 3 ), 3 ) );
+					geometry.addAttribute( 'color', new THREE.Float32BufferAttribute( colors, 4 ) );
+
+					var vertexShader = [
+						'attribute float id;',
+						'attribute vec4 color;',
+
+						'varying vec4 vColor;',
+
+						'uniform sampler2D tPosition;',
+						'uniform vec2 tSize;',
+						'uniform float pointSize;',
+
+						'vec2 getCoord( float id ) {',
+
+						'	return vec2( mod( id, tSize.x ) + 0.5, floor( id / tSize.y ) + 0.5 ) / tSize;',
+
+						'}',
+
+						'void main() {',
+
+						'	vColor = color;',
+
+						'	vec3 pos = texture2D( tPosition, getCoord( id ) ).xyz;',
+						'	vec4 mvPosition = modelViewMatrix * vec4( pos, 1.0 );',
+
+						'	gl_Position = projectionMatrix * mvPosition;',
+						'	gl_PointSize = pointSize * ( 100.0 / length( mvPosition.xyz ) );',
+
+						'}'
+					].join( '\n' );
+
+					var fragmentShader = [
+						'varying vec4 vColor;',
+
+						'void main() {',
+
+						'	if ( length( gl_PointCoord - vec2( 0.5, 0.5 ) ) > 0.5 )',
+						'		discard;',
+
+						'	gl_FragColor = vColor;',
+
+						'}'
+					].join( '\n' );
+
+					var material = new THREE.ShaderMaterial( {
+						uniforms: {
+							tPosition: { value: null },
+							tSize: { value: new THREE.Vector2( textureWidth, textureHeight ) },
+							pointSize: { value: 0.3 }
+						},
+						vertexShader: vertexShader,
+						fragmentShader: fragmentShader
+					} );
+
+					material.outlineParameters = {
+						visible: false
+					};
+
+					points = new THREE.Points( geometry, material );
+					points.frustumCulled = false;
+
+					return points;
+
+				}
+
+
+				/**
+				 * Creates Points object from Mesh object for capturing position
+				 */
+				function createPointsForCapturingPosition( mesh ) {
+
+					var num = mesh.geometry.attributes.position.count;
+
+					var ids = new Float32Array( num );
+
+					for ( var i = 0; i < num; i ++ ) {
+
+						ids[ i ] = i;
+
+					}
+
+					var geometry = mesh.geometry.clone();
+
+					geometry.addAttribute( 'id', new THREE.Float32BufferAttribute( ids, 1 ) );
+
+					var vertexShader = THREE.ShaderLib[ 'standard' ].vertexShader;
+
+					vertexShader = vertexShader.replace(
+						'}',
+						[
+							'	vPosition = transformed;',
+
+							'	// map 0.0 - 1.0 to -1.0 - 1.0',
+							'	gl_Position = vec4( getCoord( id + idOffset ) * 2.0 - 1.0, 0.0, 1.0 );',
+							'	gl_PointSize = 1.0;',
+							'}'
+						].join( '\n' )
+					);
+
+					vertexShader = vertexShader.replace(
+						'void main()',
+						[
+							'attribute float id;',
+
+							'varying vec3 vPosition;',
+
+							'uniform float idOffset;',
+							'uniform vec2 tSize;',
+
+							'vec2 getCoord( float id ) {',
+
+							'	return vec2( mod( id, tSize.x ) + 0.5, floor( id / tSize.y ) + 0.5 ) / tSize;',
+
+							'}',
+
+							'void main()'
+						].join( '\n' )
+					);
+
+					var fragmentShader = [
+						'varying vec3 vPosition;',
+
+						'void main() {',
+
+						'	gl_FragColor = vec4( vPosition, 1.0 );',
+
+						'}'
+					].join( '\n' );
+
+					var material = new THREE.ShaderMaterial( {
+						uniforms: {
+							idOffset: { value: 0.0 },
+							tSize: { value: new THREE.Vector2( textureWidth, textureHeight ) }
+						},
+						vertexShader: vertexShader,
+						fragmentShader: fragmentShader,
+						blending: THREE.NoBlending,
+						skinning: true,
+						depthTest: false
+					} );
+
+					var points = new THREE.Points( geometry, material );
+
+					// hack for enabling skinning with Points
+
+					points.isSkinnedMesh = true;
+					points.skeleton = mesh.skeleton;
+					points.bindMatrix = mesh.bindMatrix;
+					points.bindMatrixInverse = mesh.bindMatrixInverse;
+
+					return points;
+
+				}
+
+
+				/**
+				 *
+				 */
+				function createUpdatePositionMaterial() {
+
+					var vertexShader = [
+						'attribute float id;',
+
+						'varying float vId;',
+
+						'uniform float idOffset;',
+
+						'void main() {',
+
+						'	vId = id + idOffset;',
+
+						'	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );',
+
+						'}'
+					].join( '\n' );
+
+					var fragmentShader = [
+						'uniform sampler2D tVelocity;',
+						'uniform sampler2D tPosition;',
+						'uniform vec2 tSize;',
+						'uniform float deltaTime;',
+
+						'void main() {',
+
+						'	vec2 coord = gl_FragCoord.xy / tSize;',
+
+						'	vec3 pos = texture2D( tPosition, coord ).xyz;',
+						'	vec3 vel = texture2D( tVelocity, coord ).xyz;',
+
+						'	pos += vel * deltaTime;',
+
+						'	gl_FragColor = vec4( pos, 1.0 );',
+
+						'}'
+					].join( '\n' );
+
+					return new THREE.ShaderMaterial( {
+						uniforms: {
+							deltaTime: { value: 0.0 },
+							idOffset: { value: 0.0 },
+							tPosition: { value: null },
+							tVelocity: { value: null },
+							tSize: { value: new THREE.Vector2( textureWidth, textureHeight ) }
+						},
+						vertexShader: vertexShader,
+						fragmentShader: fragmentShader
+					} );
+
+				}
+
+
+				/**
+				 * Creates updateVelocity scene
+				 */
+				function createUpdateVelocityMaterial() {
+
+					var vertexShader = [
+						'attribute float id;',
+
+						'uniform float idOffset;',
+
+						'varying float vId;',
+
+						'void main() {',
+
+						'	vId = id + idOffset;',
+
+						'	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );',
+
+						'}'
+					].join( '\n' );
+
+					var fragmentShader = [
+						'uniform sampler2D tVelocity;',
+						'uniform sampler2D tPosition;',
+						'uniform vec2 tSize;',
+						'uniform float deltaTime;',
+						'uniform int noiseEnabled;',
+
+						'// Curl-noise from https://github.com/ashima/webgl-noise/tree/master/src',
+
+						'vec3 mod289( vec3 x ) {',
+
+						'	return x - floor( x * ( 1.0 / 289.0 ) ) * 289.0;',
+
+						'}',
+
+						'vec4 mod289( vec4 x ) {',
+
+						'	return x - floor( x * ( 1.0 / 289.0 ) ) * 289.0;',
+
+						'}',
+
+						'vec4 permute( vec4 x ) {',
+
+						'	return mod289( ( ( x * 34.0 ) + 1.0 ) * x );',
+
+						'}',
+
+						'vec4 taylorInvSqrt( vec4 r ) {',
+
+						'	return 1.79284291400159 - 0.85373472095314 * r;',
+
+						'}',
+
+						'float snoise( vec3 v ) {',
+
+						'	const vec2 C = vec2( 1.0 / 6.0, 1.0 / 3.0 );',
+						'	const vec4 D = vec4( 0.0, 0.5, 1.0, 2.0 );',
+
+						'	// First corner',
+						'	vec3 i = floor( v + dot( v, C.yyy ) );',
+						'	vec3 x0 = v - i + dot( i, C.xxx );',
+
+						'	// Other corners',
+						'	vec3 g = step( x0.yzx, x0.xyz );',
+						'	vec3 l = 1.0 - g;',
+						'	vec3 i1 = min( g.xyz, l.zxy );',
+						'	vec3 i2 = max( g.xyz, l.zxy );',
+
+						'	//   x0 = x0 - 0.0 + 0.0 * C.xxx;',
+						'	//   x1 = x0 - i1  + 1.0 * C.xxx;',
+						'	//   x2 = x0 - i2  + 2.0 * C.xxx;',
+						'	//   x3 = x0 - 1.0 + 3.0 * C.xxx;',
+						'	vec3 x1 = x0 - i1 + C.xxx;',
+						'	vec3 x2 = x0 - i2 + C.yyy;',
+						'	vec3 x3 = x0 - D.yyy;',
+
+						'	// Permutations',
+						'	i = mod289( i );', 
+						'	vec4 p = permute(',
+						'		permute(',
+						'			permute( i.z + vec4( 0.0, i1.z, i2.z, 1.0 ) ) + i.y + vec4( 0.0, i1.y, i2.y, 1.0 )',
+						'		) + i.x + vec4( 0.0, i1.x, i2.x, 1.0 )',
+						'	);',
+
+						'	// Gradients: 7x7 points over a square, mapped onto an octahedron.',
+						'	// The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)',
+						'	float n_ = 0.142857142857; // 1.0/7.0',
+						'	vec3 ns = n_ * D.wyz - D.xzx;',
+
+						'	vec4 j = p - 49.0 * floor( p * ns.z * ns.z );  //  mod(p,7*7)',
+
+						'	vec4 x_ = floor( j * ns.z );',
+						'	vec4 y_ = floor( j - 7.0 * x_ );    // mod(j,N)',
+
+						'	vec4 x = x_ * ns.x + ns.yyyy;',
+						'	vec4 y = y_ * ns.x + ns.yyyy;',
+						'	vec4 h = 1.0 - abs( x ) - abs( y );',
+
+						'	vec4 b0 = vec4( x.xy, y.xy );',
+						'	vec4 b1 = vec4( x.zw, y.zw );',
+
+						'	vec4 s0 = floor( b0 ) * 2.0 + 1.0;',
+						'	vec4 s1 = floor( b1 ) * 2.0 + 1.0;',
+						'	vec4 sh = -step( h, vec4( 0.0 ) );',
+
+						'	vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;',
+						'	vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww ;',
+
+						'	vec3 p0 = vec3( a0.xy, h.x );',
+						'	vec3 p1 = vec3( a0.zw, h.y );',
+						'	vec3 p2 = vec3( a1.xy, h.z );',
+						'	vec3 p3 = vec3( a1.zw, h.w );',
+
+						'	//Normalise gradients',
+						'	vec4 norm = taylorInvSqrt( vec4( dot( p0, p0 ), dot( p1, p1 ), dot( p2, p2 ), dot( p3, p3 ) ) );',
+						'	p0 *= norm.x;',
+						'	p1 *= norm.y;',
+						'	p2 *= norm.z;',
+						'	p3 *= norm.w;',
+
+						'	// Mix final noise value',
+						'	vec4 m = max( 0.6 - vec4( dot( x0, x0 ), dot( x1, x1 ), dot( x2, x2 ), dot( x3, x3 ) ), 0.0 );',
+						'	m = m * m;',
+						'	return 42.0 * dot( m * m, vec4( dot( p0, x0 ), dot( p1, x1 ), dot( p2,x2 ), dot( p3,x3 ) ) );',
+
+						'}',
+
+						'// from https://qiita.com/nyamadandan/items/2a8bc7a3639e7b5ce9c9',
+
+						'vec3 snoiseVec3( vec3 x ) {',
+
+						'	float s = snoise( vec3( x ) );',
+						'	float s1 = snoise( vec3( x.y + ' + Math.random().toFixed( 10 ) + ', x.z + ' + Math.random().toFixed( 10 ) + ', x.x + ' + Math.random().toFixed( 10 ) + ' ) );',
+						'	float s2 = snoise( vec3( x.z + ' + Math.random().toFixed( 10 ) + ', x.x + ' + Math.random().toFixed( 10 ) + ', x.y + ' + Math.random().toFixed( 10 ) + ' ) );',
+
+						'	return vec3( s , s1 , s2 );',
+
+						'}',
+
+						'vec3 curlNoise( vec3 p ) {',
+
+						'	const float e = 0.0009765625;',
+						'	const float e2 = 2.0 * e;',
+
+						'	vec3 dx = vec3( e   , 0.0 , 0.0 );',
+						'	vec3 dy = vec3( 0.0 , e   , 0.0 );',
+						'	vec3 dz = vec3( 0.0 , 0.0 , e   );',
+
+						'	vec3 p_x0 = snoiseVec3( p - dx );',
+						'	vec3 p_x1 = snoiseVec3( p + dx );',
+						'	vec3 p_y0 = snoiseVec3( p - dy );',
+						'	vec3 p_y1 = snoiseVec3( p + dy );',
+						'	vec3 p_z0 = snoiseVec3( p - dz );',
+						'	vec3 p_z1 = snoiseVec3( p + dz );',
+
+						'	float x = p_y1.z - p_y0.z - p_z1.y + p_z0.y;',
+						'	float y = p_z1.x - p_z0.x - p_x1.z + p_x0.z;',
+						'	float z = p_x1.y - p_x0.y - p_y1.x + p_y0.x;',
+
+						'	return normalize( vec3( x , y , z ) / e2 );',
+
+						'}',
+
+						'void main() {',
+
+						'	vec2 uv = gl_FragCoord.xy / tSize;',
+						'	vec3 vel = texture2D( tVelocity, uv ).xyz;',
+						'	vec3 pos = texture2D( tPosition, uv ).xyz;',
+
+						'	if ( noiseEnabled == 1 ) vel += curlNoise( pos );',
+
+						'	gl_FragColor = vec4( vel, 1.0 );',
+
+						'}'
+					].join( '\n' );
+
+					return new THREE.ShaderMaterial( {
+						uniforms: {
+							deltaTime: { value: 0.0 },
+							idOffset: { value: 0.0 },
+							tSize: { value: new THREE.Vector2( textureWidth, textureHeight ) },
+							tVelocity: { value: null },
+							tPosition: { value: null },
+							noiseEnabled: { value: 0 }
+						},
+						vertexShader: vertexShader,
+						fragmentShader: fragmentShader
+					} );
+
+				}
+
+
+				/**
+				 * Creates Data Texture for constant velocity
+				 */
+				function createDataTextureForConstantVelocity() {
+
+					return new THREE.DataTexture(
+						new Float32Array( textureWidth * textureHeight * 4 ),
+						textureWidth,
+						textureHeight,
+						THREE.RGBAFormat,
+						THREE.FloatType,
+						undefined,
+						THREE.ClampToEdgeWrapping,
+						THREE.ClampToEdgeWrapping,
+						THREE.NearestFilter,
+						THREE.NearestFilter
+					);
+
+				}
+
+
+				/**
+				 *
+				 */
+				function writeConstantVelocityToTexture( texture, setIndex, mesh ) {
+
+					var num = mesh.geometry.attributes.position.count;
+					var data = texture.image.data;
+
+					for ( var i = num * setIndex, il = num * ( setIndex + 1 ); i < il; i ++ ) {
+
+						var r = Math.random() * particleSpeed + particleSpeed * 0.1;
+						var angle = Math.random() * 360 * Math.PI / 180;
+						var angle2 = Math.random() * 360 * Math.PI / 180;
+
+						data[ i * 4 + 0 ] = r * Math.sin( angle ) * Math.cos( angle2 );
+						data[ i * 4 + 1 ] = r * Math.sin( angle ) * Math.sin( angle2 );
+						data[ i * 4 + 2 ] = r * Math.cos( angle );
+						data[ i * 4 + 3 ] = 0.0;
+
+					}
+
+					texture.needsUpdate = true;
+
+				}
+
+
+				/**
+				 *
+				 */
+				function writePositionToTexture( mesh ) {
+
+					// to partially write to texture, sets autoClear false.
+
+					renderer.autoClear = false;
+
+					// write position to Texture
+
+					capturePoints.visible = true;
+					plate.visible = false;
+
+					renderer.render( scene2, orthCamera, renderTargetPosition1 );
+
+					//
+
+					renderer.autoClear = true;
+
+					//
+
+					writeConstantVelocityToTexture( velocityTexture, particlesSetIndex, mesh );
+
+					//
+
+					particlesSetIndex++;
+
+					if ( particlesSetIndex >= particlesSet ) particlesSetIndex = 0;
+
+					var num = mesh.geometry.attributes.position.count;
+
+					capturePoints.material.uniforms.idOffset.value = particlesSetIndex * num;
+
+				}
+
+
+				/**
+				 *
+				 */
+				function animate() {
+
+					requestAnimationFrame( animate );
+
+					var deltaTime = clock.getDelta();
+
+					elapsedTime += deltaTime;
+
+					if ( periodTime === 0.0 || elapsedTime > periodTime ) {
+
+						while ( periodTime > 0.0 && elapsedTime > periodTime ) elapsedTime -= periodTime;
+
+						writePositionToTexture( mesh );
+
+					}
+
+					helper.animate( deltaTime )
+
+					render( deltaTime );
+					stats.update();
+
+				}
+
+
+				/**
+				 *
+				 */
+				function render( deltaTime ) {
+
+					plate.visible = true;
+
+					// 1. Update Velocity
+
+					plate.material = velocityMaterial;
+
+					velocityMaterial.uniforms.tPosition.value = renderTargetPosition1.texture;
+					velocityMaterial.uniforms.deltaTime.value = deltaTime;
+
+					renderer.render( scene2, orthCamera, renderTargetVelocity );
+
+
+					// 2. Update Position
+
+					plate.material = positionMaterial;
+
+					positionMaterial.uniforms.tPosition.value = renderTargetPosition1.texture;
+					positionMaterial.uniforms.tVelocity.value = renderTargetVelocity.texture;
+					positionMaterial.uniforms.deltaTime.value = deltaTime;
+
+					renderer.render( scene2, orthCamera, renderTargetPosition2 );
+
+
+					// 3. Render Particles
+
+					points.material.uniforms.tPosition.value = renderTargetPosition2.texture;
+
+					effect.render( scene, camera, composer.readBuffer );
+					composer.render();
+
+
+					// 4. Swap renderTargets
+
+					var tmp = renderTargetPosition1;
+					renderTargetPosition1 = renderTargetPosition2;
+					renderTargetPosition2 = tmp;
+
+				}
+
+
+				/**
+				 *
+				 */
+				function initGui() {
+
+					var api = {
+						'period time': periodTime,
+						'particle size': points.material.uniforms.pointSize.value,
+						'particle speed': particleSpeed,
+						'noise': velocityMaterial.uniforms.noiseEnabled.value ? true : false,
+						'model': mesh.visible,
+						'outline': effect.enabled,
+						'wireframe': mesh.material[ 0 ].wireframe,
+						'bloom': composer.passes[ 0 ].enabled
+					};
+
+					var gui = new dat.GUI();
+
+
+					gui.add( api, 'period time', 0.0, 5.0, 0.1 ).onChange( function() {
+
+						periodTime = api[ 'period time' ];
+
+					} );
+
+					gui.add( api, 'particle size', 0.1, 5.0, 0.1 ).onChange( function() {
+
+						points.material.uniforms.pointSize.value = api[ 'particle size' ];
+
+					} );
+
+					gui.add( api, 'particle speed', 0.1, 100.0, 0.1 ).onChange( function() {
+
+						particleSpeed = api[ 'particle speed' ];
+
+					} );
+
+
+					gui.add( api, 'noise' ).onChange( function() {
+
+						velocityMaterial.uniforms.noiseEnabled.value = api[ 'noise' ] ? 1 : 0;
+
+					} );
+
+					gui.add( api, 'model' ).onChange( function() {
+
+						mesh.visible = api[ 'model' ];
+
+					} );
+
+					gui.add( api, 'outline' ).onChange( function() {
+
+						effect.enabled = api[ 'outline' ];
+
+					} );
+
+					gui.add( api, 'wireframe' ).onChange( function() {
+
+						for ( var i = 0, il = mesh.material.length; i < il; i ++ ) {
+
+							mesh.material[ i ].wireframe = api[ 'wireframe' ];
+
+						}
+
+					} );
+
+					gui.add( api, 'bloom' ).onChange( function() {
+
+						composer.passes[ 0 ].enabled = api[ 'bloom' ];
+
+					} );
+
+				}
+
+
+				/**
+				 *
+				 */
+				function onWindowResize() {
+
+					camera.aspect = window.innerWidth / window.innerHeight;
+					camera.updateProjectionMatrix();
+
+					renderer.setSize( window.innerWidth, window.innerHeight );
+					effect.setSize( window.innerWidth, window.innerHeight );
+					composer.setSize( window.innerWidth, window.innerHeight );
+
+				}
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				points = createPoints( mesh );
+				capturePoints = createPointsForCapturingPosition( mesh );
+
+				velocityTexture = createDataTextureForConstantVelocity();
+
+				positionMaterial = createUpdatePositionMaterial();
+				velocityMaterial = createUpdateVelocityMaterial();
+
+				positionMaterial.uniforms.tVelocity.value = velocityTexture;
+				velocityMaterial.uniforms.tVelocity.value = velocityTexture;
+
+				plate = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ) );
+				plate.frustumCulled = false;
+
+				scene.add( mesh );
+				scene.add( points );
+
+				scene2.add( capturePoints );
+				scene2.add( plate );
+
+				writePositionToTexture( mesh );
+
+				initGui();
+				animate();
+
+			}
+		</script>
+	</body>
+</html>
