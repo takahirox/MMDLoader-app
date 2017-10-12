@@ -63,7 +63,7 @@
 			var textureHeight = 512;
 			var particlesSet = 10;
 			var particlesSetIndex = 0;
-			var particleSpeed = 40.0;
+			var particleSpeed = 4.0;
 
 			var modelFile = "https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/miku/miku_v2.pmd";
 			var vmdFiles = [ "https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/vmds/wavefile_v2.vmd" ];
@@ -117,7 +117,7 @@
 				var renderTargetVelocity = renderTargetPosition1.clone();
 
 
-				// create scene/camera/light for final rendering
+				// create scene/camera/controls/light for final rendering
 
 				scene = new THREE.Scene();
 				scene.background = new THREE.Color( 0x000000 );
@@ -125,20 +125,18 @@
 				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.001, 2000 );
 				camera.position.z = 50;
 
+				var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
 				var light = new THREE.DirectionalLight( 0x222222 );
 				light.position.set( 10, 10, 10 );
 				scene.add( light );
+
 
 				// create scene/camera for GPU calculation
 
 				scene2 = new THREE.Scene();
 
 				orthCamera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
-
-
-				// create controls
-
-				var controls = new THREE.OrbitControls( camera, renderer.domElement );
 
 
 				// create stats
@@ -151,7 +149,7 @@
 
 				clock = new THREE.Clock();
 				elapsedTime = 0.0;
-				periodTime = 0.0;
+				periodTime = 0.1;
 
 
 				// create composer
@@ -180,7 +178,7 @@
 					var num = count * particlesSet;
 
 					var ids = new Float32Array( num );
-					var colors = new Float32Array( num * 4 );
+					var colors = new Float32Array( num * 3 );
 
 					for ( var i = 0; i < num; i ++ ) {
 
@@ -212,9 +210,9 @@
 
 						for ( var j = 0; j < particlesSet; j ++ ) {
 
-							colors[ ( count * j + vertexIndex ) * 4 + 0 ] = baseColor + color.r * ( 1.0 - baseColor );
-							colors[ ( count * j + vertexIndex ) * 4 + 1 ] = baseColor + color.g * ( 1.0 - baseColor );
-							colors[ ( count * j + vertexIndex ) * 4 + 2 ] = baseColor + color.b * ( 1.0 - baseColor );
+							colors[ ( count * j + vertexIndex ) * 3 + 0 ] = baseColor + color.r * ( 1.0 - baseColor );
+							colors[ ( count * j + vertexIndex ) * 3 + 1 ] = baseColor + color.g * ( 1.0 - baseColor );
+							colors[ ( count * j + vertexIndex ) * 3 + 2 ] = baseColor + color.b * ( 1.0 - baseColor );
 
 						}
 
@@ -224,13 +222,13 @@
 
 					geometry.addAttribute( 'id', new THREE.Float32BufferAttribute( ids, 1 ) );
 					geometry.addAttribute( 'position', new THREE.Float32BufferAttribute( new Float32Array( num * 3 ), 3 ) );
-					geometry.addAttribute( 'color', new THREE.Float32BufferAttribute( colors, 4 ) );
+					geometry.addAttribute( 'color', new THREE.Float32BufferAttribute( colors, 3 ) );
 
 					var vertexShader = [
 						'attribute float id;',
-						'attribute vec4 color;',
+						'attribute vec3 color;',
 
-						'varying vec4 vColor;',
+						'varying vec3 vColor;',
 
 						'uniform sampler2D tPosition;',
 						'uniform vec2 tSize;',
@@ -256,14 +254,16 @@
 					].join( '\n' );
 
 					var fragmentShader = [
-						'varying vec4 vColor;',
+						'uniform float opacity;',
+
+						'varying vec3 vColor;',
 
 						'void main() {',
 
 						'	if ( length( gl_PointCoord - vec2( 0.5, 0.5 ) ) > 0.5 )',
 						'		discard;',
 
-						'	gl_FragColor = vColor;',
+						'	gl_FragColor = vec4( vColor, opacity );',
 
 						'}'
 					].join( '\n' );
@@ -272,10 +272,12 @@
 						uniforms: {
 							tPosition: { value: null },
 							tSize: { value: new THREE.Vector2( textureWidth, textureHeight ) },
-							pointSize: { value: 0.3 }
+							pointSize: { value: 0.3 },
+							opacity: { value: 0.5 }
 						},
 						vertexShader: vertexShader,
-						fragmentShader: fragmentShader
+						fragmentShader: fragmentShader,
+						transparent: true
 					} );
 
 					material.outlineParameters = {
@@ -462,6 +464,7 @@
 						'uniform vec2 tSize;',
 						'uniform float deltaTime;',
 						'uniform int noiseEnabled;',
+						'uniform float noiseStrength;',
 
 						'// Curl-noise from https://github.com/ashima/webgl-noise/tree/master/src',
 
@@ -563,13 +566,13 @@
 
 						'}',
 
-						'// from https://qiita.com/nyamadandan/items/2a8bc7a3639e7b5ce9c9',
+						'// from https://github.com/cabbibo/glsl-curl-noise/blob/master/curl.glsl',
 
 						'vec3 snoiseVec3( vec3 x ) {',
 
 						'	float s = snoise( vec3( x ) );',
-						'	float s1 = snoise( vec3( x.y + ' + Math.random().toFixed( 10 ) + ', x.z + ' + Math.random().toFixed( 10 ) + ', x.x + ' + Math.random().toFixed( 10 ) + ' ) );',
-						'	float s2 = snoise( vec3( x.z + ' + Math.random().toFixed( 10 ) + ', x.x + ' + Math.random().toFixed( 10 ) + ', x.y + ' + Math.random().toFixed( 10 ) + ' ) );',
+						'	float s1 = snoise( vec3( x.y - 19.1, x.z + 33.4, x.x + 47.2 ) );',
+						'	float s2 = snoise( vec3( x.z + 74.2, x.x - 124.5, x.y + 99.4 ) );',
 
 						'	return vec3( s , s1 , s2 );',
 
@@ -577,8 +580,7 @@
 
 						'vec3 curlNoise( vec3 p ) {',
 
-						'	const float e = 0.0009765625;',
-						'	const float e2 = 2.0 * e;',
+						'	const float e = 0.1;',
 
 						'	vec3 dx = vec3( e   , 0.0 , 0.0 );',
 						'	vec3 dy = vec3( 0.0 , e   , 0.0 );',
@@ -595,7 +597,7 @@
 						'	float y = p_z1.x - p_z0.x - p_x1.z + p_x0.z;',
 						'	float z = p_x1.y - p_x0.y - p_y1.x + p_y0.x;',
 
-						'	return normalize( vec3( x , y , z ) / e2 );',
+						'	return normalize( vec3( x , y , z ) / ( 2.0 * e ) );',
 
 						'}',
 
@@ -605,7 +607,7 @@
 						'	vec3 vel = texture2D( tVelocity, uv ).xyz;',
 						'	vec3 pos = texture2D( tPosition, uv ).xyz;',
 
-						'	if ( noiseEnabled == 1 ) vel += curlNoise( pos );',
+						'	if ( noiseEnabled == 1 ) vel += curlNoise( pos ) * noiseStrength;',
 
 						'	gl_FragColor = vec4( vel, 1.0 );',
 
@@ -619,7 +621,8 @@
 							tSize: { value: new THREE.Vector2( textureWidth, textureHeight ) },
 							tVelocity: { value: null },
 							tPosition: { value: null },
-							noiseEnabled: { value: 0 }
+							noiseEnabled: { value: 0 },
+							noiseStrength: { value: 1.0 }
 						},
 						vertexShader: vertexShader,
 						fragmentShader: fragmentShader
@@ -793,7 +796,9 @@
 						'period time': periodTime,
 						'particle size': points.material.uniforms.pointSize.value,
 						'particle speed': particleSpeed,
-						'noise': velocityMaterial.uniforms.noiseEnabled.value ? true : false,
+						'particle opacity': points.material.uniforms.opacity.value,
+						'particle noise': velocityMaterial.uniforms.noiseEnabled.value ? true : false,
+						'noise strength': velocityMaterial.uniforms.noiseStrength.value,
 						'model': mesh.visible,
 						'outline': effect.enabled,
 						'wireframe': mesh.material[ 0 ].wireframe,
@@ -815,16 +820,27 @@
 
 					} );
 
-					gui.add( api, 'particle speed', 0.1, 100.0, 0.1 ).onChange( function() {
+					gui.add( api, 'particle speed', 0.0, 100.0, 0.1 ).onChange( function() {
 
 						particleSpeed = api[ 'particle speed' ];
 
 					} );
 
+					gui.add( api, 'particle opacity', 0.0, 1.0, 0.05 ).onChange( function() {
 
-					gui.add( api, 'noise' ).onChange( function() {
+						points.material.uniforms.opacity.value = api[ 'particle opacity' ];
 
-						velocityMaterial.uniforms.noiseEnabled.value = api[ 'noise' ] ? 1 : 0;
+					} );
+
+					gui.add( api, 'particle noise' ).onChange( function() {
+
+						velocityMaterial.uniforms.noiseEnabled.value = api[ 'particle noise' ] ? 1 : 0;
+
+					} );
+
+					gui.add( api, 'noise strength', 0.1, 10.0, 0.1 ).onChange( function() {
+
+						velocityMaterial.uniforms.noiseStrength.value = api[ 'noise strength' ];
 
 					} );
 
@@ -889,13 +905,23 @@
 				plate = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ) );
 				plate.frustumCulled = false;
 
+				for ( var i = 0, il = mesh.material.length; i < il; i ++ ) {
+
+					mesh.material[ i ].transparent = true;
+
+				}
+
 				scene.add( mesh );
 				scene.add( points );
 
 				scene2.add( capturePoints );
 				scene2.add( plate );
 
-				writePositionToTexture( mesh );
+				for ( var i = 0; i < particlesSet; i ++ ) {
+
+					writePositionToTexture( mesh );
+
+				}
 
 				initGui();
 				animate();
