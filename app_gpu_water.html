@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>Three.js MMDLoader app Water</title>
+		<title>Three.js MMDLoader app GPU Water</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
@@ -49,7 +49,7 @@
 
 			const float circleWaveLength = 0.05;
 			const float circleWaveAmplitude = 0.05;
-			const float circleWaveK = 1.5;
+			const float circleWaveK = 2.0;
 			const float circleWaveSpeed = 0.4;
 
 			const float directionWaveLength = 0.1;
@@ -269,8 +269,7 @@
 				vec2 coordOffset = normalize( eyeNormal.xy ) * length( flatNormal ) * 0.01;
 
 				vec2 coord = gl_FragCoord.xy / size;
-				vec4 textureColor = texture2D( tDiffuse, coord + coordOffset ) +
-				                    texture2D( tWaterMap, vUv );
+				vec4 textureColor = texture2D( tDiffuse, coord + coordOffset ) + texture2D( tWaterMap, vUv );
 
 				vec3 ambientColor = vec3( 0.0, 0.4, 0.8 );
 				vec3 diffuseColor = vec3( 0.0, 0.4, 0.8 );
@@ -339,21 +338,21 @@
 		<a href="http://www.nicovideo.jp/watch/sm13147122" target="_blank">Dance Data</a>
 		</div>
 
-		<script src="three.js/three.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/build/three.js"></script>
 
-		<script src="libs/mmdparser.min.js"></script>
-		<script src="libs/ammo.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/mmdparser.min.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/ammo.js"></script>
 
-		<script src="three.js/TGALoader.js"></script>
-		<script src="three.js/MMDLoader.js"></script>
-		<script src="three.js/OutlineEffect.js"></script>
-		<script src="three.js/CCDIKSolver.js"></script>
-		<script src="three.js/MMDPhysics.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/TGALoader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/MMDLoader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/effects/OutlineEffect.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/CCDIKSolver.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/MMDPhysics.js"></script>
 
-		<script src="three.js/TrackballControls.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/controls/TrackballControls.js"></script>
 
-		<script src="three.js/Detector.js"></script>
-		<script src="libs/dat.gui.min.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/Detector.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/dat.gui.min.js"></script>
 
 		<script>
 
@@ -376,12 +375,12 @@
 
 			var waterSize = 64;
 
-			var waterTextureFile = 'https://cdn.rawgit.com/mrdoob/three.js/dev/examples/textures/water.jpg';
-			var waterNormalTextureFile = 'https://cdn.rawgit.com/mrdoob/three.js/dev/examples/textures/waternormals.jpg';
+			var waterTextureFile = 'https://rawgit.com/mrdoob/three.js/r87/examples/textures/water.jpg';
+			var waterNormalTextureFile = 'https://rawgit.com/mrdoob/three.js/r87/examples/textures/waternormals.jpg';
 
 			// see the license https://github.com/takahirox/MMDLoader-app#readme for these assets
-			var modelFile = 'https://cdn.rawgit.com/mrdoob/three.js/dev/examples/models/mmd/miku/miku_v2.pmd';
-			var vmdFiles = [ 'https://cdn.rawgit.com/mrdoob/three.js/dev/examples/models/mmd/vmds/wavefile_v2.vmd' ];
+			var modelFile = 'https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/miku/miku_v2.pmd';
+			var vmdFiles = [ 'https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/vmds/wavefile_v2.vmd' ];
 
 			var splashIndex = 0;
 			var splashParticleSize = 0.04;

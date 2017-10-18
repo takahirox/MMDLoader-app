@@ -2,6 +2,7 @@ var files = {
 	"App": [
 		"app_deferred",
 		"app_gpu_particles",
+		"app_gpu_water",
 		"app_facetracking",
 		"app_interactive",
 		"app_music_live",
@@ -15,8 +16,7 @@ var files = {
 		"app_speak",
 		"app_stereo",
 		"app_vr",
-		"app_walk",
-		"app_water"
+		"app_walk"
 	],
 	"External Links": [
 		{
