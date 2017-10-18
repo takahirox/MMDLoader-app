@@ -1,5 +1,5 @@
 # MMDLoader-app
-sample applications for [THREE.MMDLoader](https://github.com/takahirox/three.js)
+sample applications for [THREE.MMDLoader](https://threejs.org/examples/?q=mmd#webgl_loader_mmd)
 
 ## Demo
 [Demo](http://takahirox.github.io/MMDLoader-app/index.html)
