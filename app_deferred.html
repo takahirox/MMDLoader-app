@@ -44,29 +44,29 @@
 
 		<div id="container"></div>
 
-		<script src="three.js/three.js"></script>
-		<script src="three.js/Detector.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/build/three.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/Detector.js"></script>
 
-		<script src="three.js/CopyShader.js"></script>
-		<script src="three.js/FXAAShader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/shaders/CopyShader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/shaders/FXAAShader.js"></script>
 
-		<script src="three.js/EffectComposer.js"></script>
-		<script src="three.js/RenderPass.js"></script>
-		<script src="three.js/ShaderPass.js"></script>
-		<script src="three.js/WebGLDeferredRenderer.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/postprocessing/EffectComposer.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/postprocessing/RenderPass.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/postprocessing/ShaderPass.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/renderers/WebGLDeferredRenderer.js"></script>
 
-		<script src="libs/mmdparser.min.js"></script>
-		<script src="libs/ammo.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/mmdparser.min.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/ammo.js"></script>
 
-		<script src="three.js/TGALoader.js"></script>
-		<script src="three.js/MMDLoader.js"></script>
-		<script src="three.js/OutlineEffect.js"></script>
-		<script src="three.js/CCDIKSolver.js"></script>
-		<script src="three.js/MMDPhysics.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/TGALoader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/MMDLoader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/effects/OutlineEffect.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/CCDIKSolver.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/MMDPhysics.js"></script>
 
-		<script src="three.js/TrackballControls.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/controls/OrbitControls.js"></script>
 
-		<script src="libs/stats.min.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/stats.min.js"></script>
 
 		<script>
 
@@ -80,7 +80,6 @@
 			var VIEW_ANGLE = 45;
 
 			var renderer, camera, scene, stats, clock;
-			var controls;
 			var helper;
 
 			var numLights = 40;
@@ -101,7 +100,7 @@
 				camera = new THREE.PerspectiveCamera( VIEW_ANGLE, WIDTH / HEIGHT, NEAR, FAR );
 				camera.position.z = 50;
 
-				controls = new THREE.TrackballControls( camera );
+				var controls = new THREE.OrbitControls( camera );
 
 				scene = new THREE.Scene();
 
@@ -138,8 +137,8 @@
 
 				// see the license https://github.com/takahirox/MMDLoader-app#readme for these assets
 
-				var modelFile = 'https://cdn.rawgit.com/mrdoob/three.js/dev/examples/models/mmd/miku/miku_v2.pmd';
-				var vmdFiles = [ 'https://cdn.rawgit.com/mrdoob/three.js/dev/examples/models/mmd/vmds/wavefile_v2.vmd' ];
+				var modelFile = 'https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/miku/miku_v2.pmd';
+				var vmdFiles = [ 'https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/vmds/wavefile_v2.vmd' ];
 
 				helper = new THREE.MMDHelper();
 
@@ -151,9 +150,9 @@
 					mesh.position.y = -10;
 					scene.add( mesh );
 
-					for ( var i = 0, il = mesh.material.materials.length; i < il; i ++ ) {
+					for ( var i = 0, il = mesh.material.length; i < il; i ++ ) {
 
-						var material = mesh.material.materials[ i ];
+						var material = mesh.material[ i ];
 						material.emissive.multiplyScalar( 0.2 );
 
 					}
@@ -290,8 +289,6 @@
 			}
 
 			function update() {
-
-				controls.update();
 
 				var delta = clock.getDelta();
 				var time = Date.now() * 0.0006;

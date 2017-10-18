@@ -34,42 +34,32 @@
 		<a href="http://www.nicovideo.jp/watch/sm11938255" target="_blank">Audio Data</a><br />
 		</div>
 
-		<script src="three.js/three.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/build/three.js"></script>
 
-		<script src="libs/mmdparser.min.js"></script>
-		<script src="libs/ammo.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/mmdparser.min.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/ammo.js"></script>
 
-		<script src="three.js/TGALoader.js"></script>
-		<script src="three.js/MMDLoader.js"></script>
-		<script src="three.js/OutlineEffect.js"></script>
-		<script src="three.js/CCDIKSolver.js"></script>
-		<script src="three.js/MMDPhysics.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/TGALoader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/MMDLoader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/effects/OutlineEffect.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/CCDIKSolver.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/MMDPhysics.js"></script>
 
-		<script src="three.js/Detector.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/Detector.js"></script>
 
-		<script src="three.js/VREffect.js"></script>
-		<script src="three.js/WebVR.js"></script>
-		<script src="three.js/VRControls.js"></script>
-
-		<script>
-		var WebVRConfig = {
-			//FORCE_ENABLE_VR: true,
-			BUFFER_SCALE: 1.0
-		};
-		</script>
-
-		<script src="libs/webvr-polyfill.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/vr/WebVR.js"></script>
 
 		<script>
 
-			if ( WEBVR.isAvailable() === false ) {
-				document.body.appendChild( WEBVR.getMessage() );
-			}
+			WEBVR.checkAvailability().catch( function( message ) {
+
+				document.body.appendChild( WEBVR.getMessageContainer( message ) );
+
+			} );
 
 			var container;
 
 			var mesh, camera, scene, renderer, effect;
-			var dummy, controls;
 			var helper;
 
 			var ready = false;
@@ -91,11 +81,6 @@
 
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
 
-				dummy = new THREE.Camera();
-				dummy.position.y = 15;
-				dummy.position.z = 40;
-				dummy.add( camera );
-
 				// scene
 
 				scene = new THREE.Scene();
@@ -115,14 +100,17 @@
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				renderer.setClearColor( new THREE.Color( 0xffffff ) );
+				renderer.vr.enabled = true;
 				container.appendChild( renderer.domElement );
 
-				controls = new THREE.VRControls( camera );
-				effect = new THREE.VREffect( new THREE.OutlineEffect( renderer ) );
+				WEBVR.getVRDisplay( function ( display ) {
 
-				if ( WEBVR.isAvailable() === true ) {
-					document.body.appendChild( WEBVR.getButton( effect ) );
-				}
+					renderer.vr.setDevice( display );
+					document.body.appendChild( WEBVR.getButton( display, renderer.domElement ) );
+
+				} );
+
+				effect = new THREE.OutlineEffect( renderer );
 
 				var onProgress = function ( xhr ) {
 					if ( xhr.lengthComputable ) {
@@ -135,9 +123,9 @@
 				};
 
 				// see the license https://github.com/takahirox/MMDLoader-app#readme for these assets
-				var modelFile = 'https://cdn.rawgit.com/mrdoob/three.js/dev/examples/models/mmd/miku/miku_v2.pmd';
-				var vmdFiles = [ 'https://cdn.rawgit.com/mrdoob/three.js/dev/examples/models/mmd/vmds/wavefile_v2.vmd' ];
-				var audioFile = 'https://cdn.rawgit.com/mrdoob/three.js/dev/examples/models/mmd/audios/wavefile_short.mp3';
+				var modelFile = 'https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/miku/miku_v2.pmd';
+				var vmdFiles = [ 'https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/vmds/wavefile_v2.vmd' ];
+				var audioFile = 'https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/audios/wavefile_short.mp3';
 				var audioParams = { delayTime: 160 * 1 / 30 };
 
 				helper = new THREE.MMDHelper();
@@ -167,7 +155,6 @@
 						scene.add( audio );
 						scene.add( listener );
 						scene.add( mesh );
-						scene.add( dummy );
 
 						ready = true;
 
@@ -212,8 +199,6 @@
 			}
 
 			function render() {
-
-				controls.update();
 
 				if ( ready ) {
 

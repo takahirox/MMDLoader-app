@@ -51,20 +51,20 @@
 			<canvas id="canvas" width="368" height="288"></canvas>
 		</div>
 
-		<script src="./libs/clmtrackr.min.js"></script>
-		<script src="./libs/model_pca_20_svm.js"></script>
+		<script src="https://rawgit.com/auduno/clmtrackr/v1.1.2/build/clmtrackr.min.js"></script>
+		<script src="https://rawgit.com/auduno/clmtrackr/v1.1.2/models/model_pca_20_svm.js"></script>
 
-		<script src="three.js/three.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/build/three.js"></script>
 
-		<script src="libs/mmdparser.min.js"></script>
-		<script src="libs/ammo.js"></script>
-		<script src="three.js/TGALoader.js"></script>
-		<script src="three.js/MMDLoader.js"></script>
-		<script src="three.js/OutlineEffect.js"></script>
-		<script src="three.js/CCDIKSolver.js"></script>
-		<script src="three.js/MMDPhysics.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/mmdparser.min.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/ammo.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/TGALoader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/MMDLoader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/effects/OutlineEffect.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/CCDIKSolver.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/MMDPhysics.js"></script>
 
-		<script src="three.js/Detector.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/Detector.js"></script>
 
 		<script>
 
@@ -140,19 +140,10 @@
 			var modelParams = [
 				{
 					name: 'miku',
-					file: 'https://cdn.rawgit.com/mrdoob/three.js/dev/examples/models/mmd/miku/miku_v2.pmd',
+					file: 'https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/miku/miku_v2.pmd',
 					position: new THREE.Vector3( 0, -18.5,  0 )
 				}
 			];
-
-			var poseParams = [
-				{
-					name: 'basic',
-					file: 'assets/vpd/imas/makoto_basic.vpd'
-				}
-			];
-
-			var poses = {};
 
 			var blinkMorphName = 'まばたき';
 			var headBoneName = '頭';
@@ -224,21 +215,15 @@
 
 					var mesh = helper.meshes[ 0 ];
 
-					loadPoses( mesh, function () {
+					loader.pourVmdIntoModel( mesh, blinkVmd, 'blink' );
 
-						//helper.poseAsVpd( mesh, poses[ 'basic' ] );
+					helper.setAnimation( mesh );
 
-						loader.pourVmdIntoModel( mesh, blinkVmd, 'blink' );
+					createDictionary( mesh );
 
-						helper.setAnimation( mesh );
+					initBlink( mesh );
 
-						createDictionary( mesh );
-
-						initBlink( mesh );
-
-						ready = true;
-
-					} );
+					ready = true;
 
 				} );
 
@@ -266,33 +251,6 @@
 						helper.setPhysics( mesh );
 
 						scene.add( mesh );
-
-						load( index + 1 );
-
-					}, onProgress, onError );
-
-				}
-
-				load( 0 );
-
-			}
-
-			function loadPoses ( mesh, callback ) {
-
-				function load ( index ) {
-
-					if ( index >= poseParams.length ) {
-
-						callback();
-						return;
-
-					}
-
-					var param = poseParams[ index ];
-
-					loader.loadVpd( param.file, function ( vpd ) {
-
-						poses[ param.name ] = vpd;
 
 						load( index + 1 );
 

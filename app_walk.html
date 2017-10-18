@@ -57,18 +57,18 @@
 		Space : Reset Miku position<br />
 		</div>
 
-		<script src="three.js/three.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/build/three.js"></script>
 
-		<script src="libs/mmdparser.min.js"></script>
-		<script src="libs/ammo.js"></script>
-		<script src="three.js/TGALoader.js"></script>
-		<script src="three.js/MMDLoader.js"></script>
-		<script src="three.js/OutlineEffect.js"></script>
-		<script src="three.js/CCDIKSolver.js"></script>
-		<script src="three.js/MMDPhysics.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/mmdparser.min.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/ammo.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/TGALoader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/MMDLoader.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/effects/OutlineEffect.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/CCDIKSolver.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/MMDPhysics.js"></script>
 
-		<script src="three.js/TrackballControls.js"></script>
-		<script src="three.js/Detector.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/controls/OrbitControls.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/Detector.js"></script>
 
 		<script>
 
@@ -77,7 +77,7 @@
 			var camera, scene, renderer, effect;
 			var helper, loader;
 
-			var cameraControls;
+			var controls;
 
 			var miku;
 			var world;
@@ -120,7 +120,7 @@
 			var modelParams = [
 				{
 					name: 'miku',
-					file: 'https://cdn.rawgit.com/mrdoob/three.js/dev/examples/models/mmd/miku/miku_v2.pmd',
+					file: 'https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/miku/miku_v2.pmd',
 					position: new THREE.Vector3( 0, -15,  0 )
 				}
 			];
@@ -200,7 +200,8 @@
 				document.body.appendChild( container );
 
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
-				cameraControls = new THREE.TrackballControls( camera );
+				controls = new THREE.OrbitControls( camera );
+				controls.enableKeys = false;
 
 				// scene
 
@@ -441,8 +442,6 @@
 				requestAnimationFrame( update );
 
 				if ( ready ) {
-
-					cameraControls.update();
 
 					var delta = clock.getDelta();
 					manageMove( delta );
@@ -770,7 +769,7 @@
 					camera.position.copy( cameraParams[ 0 ].position );
 					camera.up.set( 0, 1, 0 );
 					camera.rotation.set( 0, 0, 0 );
-					cameraControls.target.copy( scene.position );
+					controls.update();
 
 				}
 

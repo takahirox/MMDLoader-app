@@ -1,9 +1,9 @@
 var files = {
 	"App": [
 		"app_deferred",
+		"app_facetracking",
 		"app_gpu_particles",
 		"app_gpu_water",
-		"app_facetracking",
 		"app_interactive",
 		"app_music_live",
 		"app_physics",

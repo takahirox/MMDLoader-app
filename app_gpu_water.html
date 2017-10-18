@@ -330,7 +330,7 @@
 		</script>
 
 		<div id="info">
-		<a href="http://threejs.org" target="_blank">three.js</a> - MMDLoader app Water<br />
+		<a href="http://threejs.org" target="_blank">three.js</a> - MMDLoader app GPU Water<br />
 		<a href="https://github.com/takahirox/MMDLoader-app#readme" target="_blank">MMD Assets license</a><br />
 		Copyright
 		<a href="http://threejs.org" target="_blank">three.js</a>
@@ -349,7 +349,7 @@
 		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/CCDIKSolver.js"></script>
 		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/MMDPhysics.js"></script>
 
-		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/controls/TrackballControls.js"></script>
+		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/controls/OrbitControls.js"></script>
 
 		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/Detector.js"></script>
 		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/dat.gui.min.js"></script>
@@ -370,8 +370,6 @@
 			var renderTarget;
 
 			var helper;
-
-			var controls;
 
 			var waterSize = 64;
 
@@ -442,7 +440,7 @@
 
 				reflectionCamera = camera.clone();
 
-				controls = new THREE.TrackballControls( camera );
+				var controls = new THREE.OrbitControls( camera );
 
 				// scene
 
@@ -695,8 +693,6 @@
 			function update() {
 
 				if ( ! ready ) return;
-
-				controls.update();
 
 				var delta = clock.getDelta();
 
