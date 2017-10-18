@@ -330,7 +330,7 @@
 		</script>
 
 		<div id="info">
-		<a href="http://threejs.org" target="_blank">three.js</a> - MMDLoader app Water<br />
+		<a href="http://threejs.org" target="_blank">three.js</a> - MMDLoader app GPU Water<br />
 		<a href="https://github.com/takahirox/MMDLoader-app#readme" target="_blank">MMD Assets license</a><br />
 		Copyright
 		<a href="http://threejs.org" target="_blank">three.js</a>
@@ -338,21 +338,21 @@
 		<a href="http://www.nicovideo.jp/watch/sm13147122" target="_blank">Dance Data</a>
 		</div>
 
-		<script src="https://rawgit.com/mrdoob/three.js/r87/build/three.js"></script>
+		<script src="https://cdn.rawgit.com/mrdoob/three.js/r87/build/three.js"></script>
 
-		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/mmdparser.min.js"></script>
-		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/ammo.js"></script>
+		<script src="https://cdn.rawgit.com/mrdoob/three.js/r87/examples/js/libs/mmdparser.min.js"></script>
+		<script src="https://cdn.rawgit.com/mrdoob/three.js/r87/examples/js/libs/ammo.js"></script>
 
-		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/TGALoader.js"></script>
-		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/loaders/MMDLoader.js"></script>
-		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/effects/OutlineEffect.js"></script>
-		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/CCDIKSolver.js"></script>
-		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/animation/MMDPhysics.js"></script>
+		<script src="https://cdn.rawgit.com/mrdoob/three.js/r87/examples/js/loaders/TGALoader.js"></script>
+		<script src="https://cdn.rawgit.com/mrdoob/three.js/r87/examples/js/loaders/MMDLoader.js"></script>
+		<script src="https://cdn.rawgit.com/mrdoob/three.js/r87/examples/js/effects/OutlineEffect.js"></script>
+		<script src="https://cdn.rawgit.com/mrdoob/three.js/r87/examples/js/animation/CCDIKSolver.js"></script>
+		<script src="https://cdn.rawgit.com/mrdoob/three.js/r87/examples/js/animation/MMDPhysics.js"></script>
 
-		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/controls/TrackballControls.js"></script>
+		<script src="https://cdn.rawgit.com/mrdoob/three.js/r87/examples/js/controls/OrbitControls.js"></script>
 
-		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/Detector.js"></script>
-		<script src="https://rawgit.com/mrdoob/three.js/r87/examples/js/libs/dat.gui.min.js"></script>
+		<script src="https://cdn.rawgit.com/mrdoob/three.js/r87/examples/js/Detector.js"></script>
+		<script src="https://cdn.rawgit.com/mrdoob/three.js/r87/examples/js/libs/dat.gui.min.js"></script>
 
 		<script>
 
@@ -371,16 +371,14 @@
 
 			var helper;
 
-			var controls;
-
 			var waterSize = 64;
 
-			var waterTextureFile = 'https://rawgit.com/mrdoob/three.js/r87/examples/textures/water.jpg';
-			var waterNormalTextureFile = 'https://rawgit.com/mrdoob/three.js/r87/examples/textures/waternormals.jpg';
+			var waterTextureFile = 'https://cdn.rawgit.com/mrdoob/three.js/r87/examples/textures/water.jpg';
+			var waterNormalTextureFile = 'https://cdn.rawgit.com/mrdoob/three.js/r87/examples/textures/waternormals.jpg';
 
 			// see the license https://github.com/takahirox/MMDLoader-app#readme for these assets
-			var modelFile = 'https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/miku/miku_v2.pmd';
-			var vmdFiles = [ 'https://rawgit.com/mrdoob/three.js/r87/examples/models/mmd/vmds/wavefile_v2.vmd' ];
+			var modelFile = 'https://cdn.rawgit.com/mrdoob/three.js/r87/examples/models/mmd/miku/miku_v2.pmd';
+			var vmdFiles = [ 'https://cdn.rawgit.com/mrdoob/three.js/r87/examples/models/mmd/vmds/wavefile_v2.vmd' ];
 
 			var splashIndex = 0;
 			var splashParticleSize = 0.04;
@@ -442,7 +440,7 @@
 
 				reflectionCamera = camera.clone();
 
-				controls = new THREE.TrackballControls( camera );
+				var controls = new THREE.OrbitControls( camera );
 
 				// scene
 
@@ -695,8 +693,6 @@
 			function update() {
 
 				if ( ! ready ) return;
-
-				controls.update();
 
 				var delta = clock.getDelta();
 
