@@ -1,0 +1,319 @@
+<!DOCTYPE HTML>
+<html lang="en">
+	<head>
+		<title>Three.js MMDLoader app Deferred Rendering</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background-color: #000;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				position: absolute;
+				top: 20px; width: 100%;
+				color: #ffffff;
+				padding: 5px;
+				font-family: Monospace;
+				font-size: 13px;
+				text-align: center;
+			}
+			a {
+				color: #ff0080;
+				text-decoration: none;
+			}
+			a:hover {
+				color: #0080ff;
+			}
+			#stats { position: absolute; top:10px; left: 5px }
+			#stats #fps { background: transparent !important }
+			#stats #fps #fpsText { color: #aaa !important }
+			#stats #fps #fpsGraph { display: none }
+		</style>
+	</head>
+
+	<body>
+		<div id="info">
+		<a href="http://threejs.org" target="_blank">three.js</a> - MMDLoader app Deferred Rendering<br />
+		<a href="https://github.com/takahirox/MMDLoader-app#readme" target="_blank">MMD Assets license</a><br />
+		Copyright
+		<a href="http://www.geocities.jp/higuchuu4/index_e.htm" target="_blank">Model Data</a>
+		<a href="http://www.nicovideo.jp/watch/sm13147122" target="_blank">Dance Data</a>
+		</div>
+
+		<div id="container"></div>
+
+		<script src="files/three.js"></script>
+		<script src="files/Detector.js"></script>
+
+		<script src="files/CopyShader.js"></script>
+		<script src="files/FXAAShader.js"></script>
+
+		<script src="files/EffectComposer.js"></script>
+		<script src="files/RenderPass.js"></script>
+		<script src="files/ShaderPass.js"></script>
+		<script src="files/WebGLDeferredRenderer.js"></script>
+
+		<script src="files/mmdparser.min.js"></script>
+		<script src="files/ammo.js"></script>
+
+		<script src="files/TGALoader.js"></script>
+		<script src="files/MMDLoader.js"></script>
+		<script src="files/OutlineEffect.js"></script>
+		<script src="files/CCDIKSolver.js"></script>
+		<script src="files/MMDPhysics.js"></script>
+
+		<script src="files/OrbitControls.js"></script>
+
+		<script src="files/stats.min.js"></script>
+
+		<script>
+
+			var WIDTH = window.innerWidth;
+			var HEIGHT = window.innerHeight;
+
+			var windowHalfX = WIDTH / 2;
+			var windowHalfY = HEIGHT / 2;
+
+			var NEAR = 1.0, FAR = 350.0;
+			var VIEW_ANGLE = 45;
+
+			var renderer, camera, scene, stats, clock;
+			var helper;
+
+			var numLights = 40;
+			var lights = [];
+
+			var ready = false;
+
+			init();
+			animate();
+
+			function init() {
+
+				renderer = new THREE.WebGLDeferredRenderer();
+				renderer.enableLightPrePass( true );
+				//renderer.forwardRendering = true;
+				renderer.setSize( WIDTH, HEIGHT );
+
+				camera = new THREE.PerspectiveCamera( VIEW_ANGLE, WIDTH / HEIGHT, NEAR, FAR );
+				camera.position.z = 50;
+
+				var controls = new THREE.OrbitControls( camera );
+
+				scene = new THREE.Scene();
+
+				stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = '8px';
+				stats.domElement.style.zIndex = 100;
+
+				var container = document.getElementById( 'container' );
+				container.appendChild( renderer.domElement );
+				container.appendChild( stats.domElement );
+
+				initModel();
+				initRoom();
+				initLights();
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				clock = new THREE.Clock();
+
+			}
+
+			function initModel() {
+
+				var onProgress = function ( xhr ) {
+					if ( xhr.lengthComputable ) {
+						var percentComplete = xhr.loaded / xhr.total * 100;
+						console.log( Math.round(percentComplete, 2) + '% downloaded' );
+					}
+				};
+
+				var onError = function ( xhr ) {
+				};
+
+				// see the license https://github.com/takahirox/MMDLoader-app#readme for these assets
+
+				var modelFile = 'files/miku_v2.pmd';
+				var vmdFiles = [ 'files/video/wavefile_v2.vmd' ];
+
+				helper = new THREE.MMDHelper();
+
+				var loader = new THREE.MMDLoader();
+
+				loader.load( modelFile, vmdFiles, function ( object ) {
+
+					mesh = object;
+					mesh.position.y = -10;
+					scene.add( mesh );
+
+					for ( var i = 0, il = mesh.material.length; i < il; i ++ ) {
+
+						var material = mesh.material[ i ];
+						material.emissive.multiplyScalar( 0.2 );
+
+					}
+
+					helper.add( mesh );
+					helper.setAnimation( mesh );
+
+					/*
+					 * Note: create CCDIKHelper after calling helper.setAnimation()
+					 */
+					ikHelper = new THREE.CCDIKHelper( mesh );
+					ikHelper.visible = false;
+					scene.add( ikHelper );
+
+					/*
+					 * Note: You're recommended to call helper.setPhysics()
+					 *       after calling helper.setAnimation().
+			 		 */
+					helper.setPhysics( mesh );
+					physicsHelper = new THREE.MMDPhysicsHelper( mesh );
+					physicsHelper.visible = false;
+					scene.add( physicsHelper );
+
+					helper.unifyAnimationDuration( { afterglow: 2.0 } );
+
+					ready = true;
+
+				}, onProgress, onError );
+
+			}
+
+			function initLights() {
+
+				var distance = 7;
+
+				var c = new THREE.Vector3();
+				var geometry = new THREE.SphereGeometry( 0.1, 0.1, 0.1 );
+
+				for ( var i = 0; i < numLights; i ++ ) {
+
+					var light = new THREE.PointLight( 0xffffff, 2.0, distance );
+					c.set( Math.random(), Math.random(), Math.random() ).normalize();
+					light.color.setRGB( c.x, c.y, c.z );
+					scene.add( light );
+					lights.push( light );
+
+					var material = new THREE.MeshBasicMaterial( { color: light.color } );
+					var emitter = new THREE.Mesh( geometry, material );
+					light.add( emitter );
+
+				}
+
+				var directionalLight = new THREE.DirectionalLight( 0x101010 );
+				directionalLight.position.set( -1, 1, 1 ).normalize();
+				scene.add( directionalLight );
+
+				var spotLight = new THREE.SpotLight( 0x404040 );
+				spotLight.position.set( 0, 30, 0 );
+				spotLight.angle = 0.5;
+				scene.add( spotLight );
+
+			}
+
+			function initRoom() {
+
+				var size = 50;
+				var geometry = new THREE.PlaneBufferGeometry( size, size );
+				var material = new THREE.MeshPhongMaterial( { color: 0x222222, specular: 0x222222, shininess: 75 } );
+
+				var room = new THREE.Object3D();
+				room.position.y = size / 2 - 10;
+
+				// top
+				var mesh = new THREE.Mesh( geometry, material );
+				mesh.rotation.x = Math.PI/2;
+				mesh.position.y = size / 2;
+				room.add( mesh );
+
+				// bottom
+				mesh = new THREE.Mesh( geometry, material );
+				mesh.rotation.x = -Math.PI/2;
+				mesh.position.y = -size / 2;
+				room.add( mesh );
+
+				// left
+				mesh = new THREE.Mesh( geometry, material );
+				mesh.position.x = -size / 2;
+				mesh.rotation.y = Math.PI/2;
+				room.add( mesh );
+
+				// right
+				mesh = new THREE.Mesh( geometry, material );
+				mesh.position.x = size / 2;
+				mesh.rotation.y = -Math.PI/2;
+				room.add( mesh );
+
+				// back
+				mesh = new THREE.Mesh( geometry, material );
+				mesh.position.z = -size / 2;
+				room.add( mesh );
+
+				scene.add( room );
+
+			}
+
+			function onWindowResize( event ) {
+
+				WIDTH = window.innerWidth;
+				HEIGHT = window.innerHeight;
+
+				windowHalfX = WIDTH / 2;
+				windowHalfY = HEIGHT / 2;
+
+				renderer.setSize( WIDTH, HEIGHT );
+
+				camera.aspect = WIDTH / HEIGHT;
+				camera.updateProjectionMatrix();
+
+			}
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				if ( ready ) {
+
+					update();
+					render();
+
+				}
+
+				stats.update();
+
+			}
+
+			function update() {
+
+				var delta = clock.getDelta();
+				var time = Date.now() * 0.0006;
+
+				helper.animate( delta );
+
+				for ( var i = 0, il = lights.length; i < il; i ++ ) {
+
+					var light = lights[ i ];
+					var x = Math.sin( time + i * 7.0 ) * 24 * Math.abs( Math.sin( time / i / 7.0 ) );
+					var y = Math.cos( time + i * 5.0 ) * 15 * Math.abs( Math.sin( time / i / 13.0 ) ) + 6;
+					var z = Math.cos( time + i * 3.0 ) * 24 * Math.abs( Math.sin( time / i / 17.0 ) );
+					light.position.set( x, y, z );
+
+				}
+
+			}
+
+			function render() {
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+	</body>
+
+</html>

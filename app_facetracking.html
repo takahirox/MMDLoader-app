@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Three.js MMDLoader app Face tracking</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #fff;
+				color: #000;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				color: #000;
+				position: absolute;
+				top: 10px;
+				width: 100%;
+				z-index: 100;
+				text-align: right;
+				right: 20px;
+				display: block;
+			}
+			#info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
+			#container {
+				position : relative;
+			}
+			#canvas {
+				position : absolute;
+				left : 0;
+				top : 0;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div id="info">
+		<a href="http://threejs.org" target="_blank">three.js</a> - MMDLoader app Face tracking<br />
+		<a href="https://github.com/takahirox/MMDLoader-app#readme" target="_blank">MMD Assets license</a><br />
+		Copyright<br />
+		<a href="http://threejs.org" target="_blank">three.js</a><br />
+		<a href="http://www.geocities.jp/higuchuu4/index_e.htm" target="_blank">Model Data</a><br />
+		<a href="https://github.com/auduno/clmtrackr" target="_blank">Face tracking lib</a><br />
+		</div>
+
+		<div id="container">
+			<video id="video" width="368" height="288" preload="auto">
+				<!--<source src="./video/franck.ogv" type="video/ogg"/>-->
+			</video>
+			<canvas id="canvas" width="368" height="288"></canvas>
+		</div>
+
+		<script src="files/clmtrackr.min.js"></script>
+		<script src="files/model_pca_20_svm.js"></script>
+
+		<script src="files/three.js"></script>
+
+		<script src="files/mmdparser.min.js"></script>
+		<script src="files/ammo.js"></script>
+		<script src="files/TGALoader.js"></script>
+		<script src="files/MMDLoader.js"></script>
+		<script src="files/OutlineEffect.js"></script>
+		<script src="files/CCDIKSolver.js"></script>
+		<script src="files/MMDPhysics.js"></script>
+
+		<script src="files/Detector.js"></script>
+
+		<script>
+
+			if ( parent.window.location.protocol !== 'file:' &&
+			     parent.window.location.hostname !== 'localhost' &&
+			     parent.window.location.protocol !== 'https:' ){
+
+				parent.window.location.protocol = 'https';
+
+			}
+
+			var videoInput = document.getElementById( 'video' );
+
+			navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+			window.URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
+
+			if ( navigator.getUserMedia ) {
+
+				var videoSelector = { video: true };
+
+				navigator.getUserMedia( videoSelector, function ( stream ) {
+
+					if ( videoInput.mozCaptureStream ) {
+
+						videoInput.mozSrcObject = stream;
+
+					} else {
+
+						videoInput.src = ( window.URL && window.URL.createObjectURL( stream ) ) || stream;
+
+					}
+
+				},
+				function() {
+
+					alert( 'There was some problems trying to fetch video from your webcam.' );
+
+				} );
+				videoInput.play();
+
+			} else {
+
+				alert( 'Your browser does not seem to support getUserMedia' );
+
+			}
+
+			var ctracker = new clm.tracker();
+			ctracker.init( pModel );
+			ctracker.start( videoInput );
+
+			var canvasInput = document.getElementById( 'canvas' );
+			var cc = canvasInput.getContext( '2d' );
+
+			var container;
+
+			var camera, scene, renderer, effect;
+			var helper, loader;
+
+			var ready = false;
+			var debug = false;
+
+			var width = canvasInput.width;
+			var height = canvasInput.height;
+
+			var clock = new THREE.Clock();
+
+			var preData = {};
+
+			var boneDictionary = {};
+			var modelDictionary = {};
+			var morphDictionary = null;
+
+			var modelParams = [
+				{
+					name: 'miku',
+					file: 'files/miku_v2.pmd',
+					position: new THREE.Vector3( 0, -18.5,  0 )
+				}
+			];
+
+			var blinkMorphName = 'まばたき';
+			var headBoneName = '頭';
+
+			var blinkVmd = {
+				metadata: {
+					name: 'blink',
+					coordinateSystem: 'right',
+					morphCount:  3,
+					cameraCount: 0,
+					motionCount: 0
+				},
+				morphs: [
+					{ frameNum:   0, morphName: blinkMorphName, weight: 0.0 },
+					{ frameNum:   3, morphName: blinkMorphName, weight: 1.0 },
+					{ frameNum:   6, morphName: blinkMorphName, weight: 0.0 }
+				],
+				cameras: [],
+				motions: []
+			};
+
+			var onProgress = function ( xhr ) {
+				if ( xhr.lengthComputable ) {
+					var percentComplete = xhr.loaded / xhr.total * 100;
+					console.log( Math.round(percentComplete, 2) + '% downloaded' );
+				}
+			};
+
+			var onError = function ( xhr ) {
+			};
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+
+				camera = new THREE.PerspectiveCamera( 45, width / height, 1, 2000 );
+				camera.position.z = 6;
+
+				// scene
+
+				scene = new THREE.Scene();
+
+				var ambient = new THREE.AmbientLight( 0x666666 );
+				scene.add( ambient );
+
+				var directionalLight = new THREE.DirectionalLight( 0x887766 );
+				directionalLight.position.set( -1, 1, 1 ).normalize();
+				scene.add( directionalLight );
+
+				//
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( width, height );
+				renderer.setClearColor( new THREE.Color( 0xffffff ) );
+				container.appendChild( renderer.domElement );
+
+				effect = new THREE.OutlineEffect( renderer );
+
+				// model
+
+				helper = new THREE.MMDHelper();
+				loader = new THREE.MMDLoader();
+
+				loadModels( function () {
+
+					var mesh = helper.meshes[ 0 ];
+
+					loader.pourVmdIntoModel( mesh, blinkVmd, 'blink' );
+
+					helper.setAnimation( mesh );
+
+					createDictionary( mesh );
+
+					initBlink( mesh );
+
+					ready = true;
+
+				} );
+
+			}
+
+			function loadModels ( callback ) {
+
+				function load ( index ) {
+
+					if ( index >= modelParams.length ) {
+
+						callback();
+						return;
+
+					}
+
+					var param = modelParams[ index ];
+
+					loader.loadModel( param.file, function ( object ) {
+
+						var mesh = object;
+						mesh.position.copy( param.position );
+
+						helper.add( mesh );
+						helper.setPhysics( mesh );
+
+						scene.add( mesh );
+
+						load( index + 1 );
+
+					}, onProgress, onError );
+
+				}
+
+				load( 0 );
+
+			}
+
+			function createDictionary ( mesh ) {
+
+				var bones = mesh.skeleton.bones;
+
+				for ( var i = 0; i < bones.length; i++ ) {
+
+					var b = bones[ i ];
+					boneDictionary[ b.name ] = i;
+
+				}
+
+				morphDictionary = mesh.morphTargetDictionary;
+
+			}
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+				render();
+
+			}
+
+			function render() {
+
+				if ( ready ) {
+
+					var delta = clock.getDelta();
+					var mesh = helper.meshes[ 0 ];
+
+					cc.clearRect( 0, 0, canvasInput.width, canvasInput.height );
+					ctracker.draw( canvasInput );
+
+					updateModel( mesh );
+
+					// Workaround for AnimationMixer issue. See MMDHelper.animateOneMesh()
+					helper.backupBones( mesh );
+
+					helper.animate( delta );
+
+				}
+
+				effect.render( scene, camera );
+
+
+			}
+
+			function initBlink ( mesh ) {
+
+				mesh.mixer.clipAction( 'blinkMorph' ).loop = THREE.LoopOnce;
+
+			}
+
+			function startBlink ( mesh ) {
+
+				var clip = mesh.mixer.clipAction( 'blinkMorph' );
+
+				if ( clip.time < clip._clip.duration ) {
+
+					return;
+
+				}
+
+				clip.stop();
+				clip.play();
+
+			}
+
+			function updateModel ( mesh ) {
+
+				if ( ! ctracker.getCurrentPosition() ) {
+
+					return;
+
+				}
+
+				updateEyeball( mesh );
+				updateEyeOpen( mesh );
+				updateEyebrow( mesh );
+				updateMouth( mesh );
+				updateFaceZAngle( mesh );
+				updateFaceYAngle( mesh );
+				updateFaceXAngle( mesh );
+
+				if ( detectBlink() ) {
+
+					startBlink( mesh );
+
+				}
+
+			}
+
+			function updateEyeball ( mesh ) {
+
+				updateLeftEyeball( mesh );
+				updateRightEyeball( mesh );
+
+			}
+
+			function updateLeftEyeball ( mesh ) {
+
+				var posX = getLeftEyeballXPosition();
+				var posY = getLeftEyeballYPosition();
+				var bone = mesh.skeleton.bones[ boneDictionary[ '左目' ] ];
+
+				bone.rotation.y =  posX * 4;
+				bone.rotation.x =  posY * 4;
+
+			}
+
+			function updateRightEyeball ( mesh ) {
+
+				var posX = getRightEyeballXPosition();
+				var posY = getRightEyeballYPosition();
+				var bone = mesh.skeleton.bones[ boneDictionary[ '右目' ] ];
+
+				bone.rotation.y = -posX * 4;
+				bone.rotation.x =  posY * 4;
+
+			}
+
+			function updateEyeOpen ( mesh ) {
+
+				var sizeR = getRightEyeOpen();
+				var sizeL = getLeftEyeOpen();
+
+				sizeR = 1.0 - sizeR * 0.7;
+				sizeR = Math.max( 0.0, sizeR );
+				sizeR = Math.min( 1.0, sizeR );
+
+				sizeL = 1.0 - sizeL * 0.7;
+				sizeL = Math.max( 0.0, sizeL );
+				sizeL = Math.min( 1.0, sizeL );
+
+				mesh.morphTargetInfluences[ morphDictionary[ 'ウィンク' ] ] = sizeR;
+				mesh.morphTargetInfluences[ morphDictionary[ 'ウィンク右' ] ] = sizeL;
+
+			}
+
+			function updateEyebrow ( mesh ) {
+
+				var pos = getEyebrowPosition();
+
+				pos = pos / 2;
+
+				pos = Math.min( 1.0, pos );
+				pos = Math.max( 0.0, pos );
+
+				pos = 1.0 - pos;
+				pos = 0.5 + pos / 2;
+
+				mesh.morphTargetInfluences[ morphDictionary[ '下' ] ] = pos;
+
+			}
+
+			function updateMouth ( mesh ) {
+
+				var sizeX = getMouthXSize();
+				var sizeY = getMouthYSize();
+
+				sizeX = sizeX - 1;
+				sizeX = Math.max( 0.0, sizeX );
+				sizeX = Math.min( 1.0, sizeX );
+				sizeX = sizeX / 4;
+
+				sizeY = sizeY / 2 - 0.1;
+				sizeY = Math.max( 0.0, sizeY );
+				sizeY = Math.min( 0.6, sizeY );
+
+				mesh.morphTargetInfluences[ morphDictionary[ 'い' ] ] = sizeX;
+				mesh.morphTargetInfluences[ morphDictionary[ 'あ' ] ] = sizeY;
+
+			}
+
+			function updateFaceXAngle ( mesh ) {
+
+				var angle = getFaceXAngle();
+				var bone = mesh.skeleton.bones[ boneDictionary[ '頭' ] ];
+
+				bone.rotation.x = angle - Math.PI / 18;
+
+			}
+
+			function updateFaceYAngle ( mesh ) {
+
+				var angle = getFaceYAngle();
+				var bone = mesh.skeleton.bones[ boneDictionary[ '頭' ] ];
+
+				bone.rotation.y = angle / 10;
+
+			}
+
+			function updateFaceZAngle ( mesh ) {
+
+				var angle = getFaceZAngle();
+				var bone = mesh.skeleton.bones[ boneDictionary[ '頭' ] ];
+
+				bone.rotation.z = -angle;
+
+			}
+
+			function calculateDistance ( p1, p2 ) {
+
+				var dx = p1[ 0 ] - p2[ 0 ];
+				var dy = p1[ 1 ] - p2[ 1 ];
+				return Math.sqrt( dx * dx + dy * dy );
+
+			}
+
+			function getMouthXSize () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var d1 = calculateDistance( p[ 50 ], p[ 44 ] );
+				var d2 = calculateDistance( p[ 30 ], p[ 25 ] );
+
+				return d1 / d2;
+
+			}
+
+			function getMouthYSize () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var mouthDistance = calculateDistance( p[ 60 ], p[ 57 ] );
+				var lipThickness = calculateDistance( p[ 53 ], p[ 57 ] );
+
+				return mouthDistance / lipThickness;
+
+			}
+
+			function getEyebrowPosition () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var eyebrowDistance = calculateDistance( p[ 21 ], p[ 24 ] );
+				var lipThickness = calculateDistance( p[ 53 ], p[ 57 ] );
+
+				return eyebrowDistance / lipThickness;
+
+			}
+
+			function getFaceXAngle () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var p1 = p[ 2 ];
+				var p2 = p[ 7 ];
+				var p3 = p[ 12 ];
+
+				var v1 = [ p1[ 0 ] - p2[ 0 ], p1[ 1 ] - p2[ 1 ] ];
+				var v2 = [ p3[ 0 ] - p2[ 0 ], p3[ 1 ] - p2[ 1 ] ];
+
+				return ( v1[ 0 ] * v2[ 0 ] + v1[ 1 ] * v2[ 1 ] ) / ( Math.sqrt( v1[ 0 ] * v1[ 0 ] + v1[ 1 ] * v1[ 1 ] ) * Math.sqrt( v2[ 0 ] * v2[ 0 ] + v2[ 1 ] * v2[ 1 ] ) );
+
+			}
+
+			function getFaceYAngle () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var p1_1 = p[ 0 ];
+				var p1_2 = p[ 23 ];
+
+				var p2_1 = p[ 28 ];
+				var p2_2 = p[ 14 ];
+
+				var d1 = calculateDistance( p1_1, p1_2 );
+				var d2 = calculateDistance( p2_1, p2_2 );
+
+				return d1 / d2;
+
+			}
+
+			function getFaceZAngle () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var p1 = p[ 29 ];
+				var p2 = p[ 24 ];
+
+				var dx = p1[ 0 ] - p2[ 0 ];
+				var dy = p1[ 1 ] - p2[ 1 ];
+
+				return dy / dx;
+
+			}
+
+			function getLeftEyeballXPosition () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var p1 = p[ 32 ];
+				var p2 = p[ 30 ];
+				var p3 = p[ 28 ];
+
+				var d1 = calculateDistance( p1, p2 );
+				var d2 = calculateDistance( p3, p2 );
+
+				return d1 / d2 - 0.5;
+
+			}
+
+			function getLeftEyeballYPosition () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var p1 = p[ 32 ];
+				var p2 = p[ 31 ];
+				var p3 = p[ 29 ];
+
+				var d1 = calculateDistance( p1, p2 );
+				var d2 = calculateDistance( p3, p2 );
+
+				return d1 / d2 - 0.5;
+
+			}
+
+			function getRightEyeballXPosition () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var p1 = p[ 27 ];
+				var p2 = p[ 25 ];
+				var p3 = p[ 23 ];
+
+				var d1 = calculateDistance( p1, p2 );
+				var d2 = calculateDistance( p3, p2 );
+
+				return d1 / d2 - 0.5;
+
+			}
+
+			function getRightEyeballYPosition () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var p1 = p[ 27 ];
+				var p2 = p[ 26 ];
+				var p3 = p[ 24 ];
+
+				var d1 = calculateDistance( p1, p2 );
+				var d2 = calculateDistance( p3, p2 );
+
+				return d1 / d2 - 0.5;
+
+			}
+
+			function getRightEyeOpen () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var eyeDistance = calculateDistance( p[ 26 ], p[ 24 ] );
+				var lipThickness = calculateDistance( p[ 53 ], p[ 57 ] );
+
+				return eyeDistance / lipThickness;
+
+			}
+
+			function getLeftEyeOpen () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var eyeDistance = calculateDistance( p[ 31 ], p[ 29 ] );
+				var lipThickness = calculateDistance( p[ 53 ], p[ 57 ] );
+
+				return eyeDistance / lipThickness;
+
+			}
+
+			function detectBlink () {
+
+				var p = ctracker.getCurrentPosition();
+
+				var lipThickness = calculateDistance( p[ 53 ], p[ 57 ] );
+
+				var leftEyeball = p[ 32 ];
+				var rightEyeball = p[ 27 ];
+				var nose = p[ 37 ];
+
+				if ( preData[ 'nose' ] !== undefined ) {
+
+					var dyLE = leftEyeball[ 1 ] - preData[ 'leftEyeball' ][ 1 ];
+					var dyRE = rightEyeball[ 1 ] - preData[ 'rightEyeball' ][ 1 ];
+
+					var dLE = calculateDistance( leftEyeball, preData[ 'leftEyeball' ] );
+					var dRE = calculateDistance( rightEyeball, preData[ 'rightEyeball' ] );
+					var dN = calculateDistance( nose, preData[ 'nose' ] );
+
+					if ( ( ( dyLE / lipThickness ) > 0.3 && ( dLE / dN ) > 2.0 ) || 
+					     ( ( dyRE / lipThickness ) > 0.3 && ( dRE / dN ) > 2.0 ) ) {
+
+						return true;
+
+					}
+
+				}
+
+				preData[ 'nose' ] = nose.slice();
+				preData[ 'leftEyeball' ] = leftEyeball.slice();
+				preData[ 'rightEyeball' ] = rightEyeball.slice();
+
+				return false;
+
+			}
+		</script>
+
+	</body>
+</html>
