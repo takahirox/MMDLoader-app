@@ -17,5 +17,19 @@ var files = {
 		"app_stereo",
 		"app_vr",
 		"app_walk"
+	],
+	"External Links": [
+		{
+			name: "AR(Learning Three.js)",
+			url: "http://learningthreejs.com/blog/2015/07/16/hatsune-miku-dancing-in-augmented-reality/"
+		},
+		{
+			name: "360 panorama(Medel View)",
+			url: "http://web-k.github.io/medelview/model/"
+		},
+		{
+			name: "MMDxThree.jsxVR | CardboardClub",
+			url: "http://cardboardclub.jp/study/160609_mmd/"
+		}
 	]
 };

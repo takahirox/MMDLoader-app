@@ -34,17 +34,17 @@
 		<a href="http://nicomas.main.jp/mmddata/" target="_blank">Motion Data</a>
 		</div>
 
-		<script src="files/three.js"></script>
+		<script src="https://rawcdn.githack.com/mrdoob/three.js/r87/build/three.js"></script>
 
-		<script src="files/mmdparser.min.js"></script>
-		<script src="files/ammo.js"></script>
-		<script src="files/TGALoader.js"></script>
-		<script src="files/MMDLoader.js"></script>
-		<script src="files/OutlineEffect.js"></script>
-		<script src="files/CCDIKSolver.js"></script>
-		<script src="files/MMDPhysics.js"></script>
+		<script src="https://rawcdn.githack.com/mrdoob/three.js/r87/examples/js/libs/mmdparser.min.js"></script>
+		<script src="https://rawcdn.githack.com/mrdoob/three.js/r87/examples/js/libs/ammo.js"></script>
+		<script src="https://rawcdn.githack.com/mrdoob/three.js/r87/examples/js/loaders/TGALoader.js"></script>
+		<script src="https://rawcdn.githack.com/mrdoob/three.js/r87/examples/js/loaders/MMDLoader.js"></script>
+		<script src="https://rawcdn.githack.com/mrdoob/three.js/r87/examples/js/effects/OutlineEffect.js"></script>
+		<script src="https://rawcdn.githack.com/mrdoob/three.js/r87/examples/js/animation/CCDIKSolver.js"></script>
+		<script src="https://rawcdn.githack.com/mrdoob/three.js/r87/examples/js/animation/MMDPhysics.js"></script>
 
-		<script src="files/Detector.js"></script>
+		<script src="https://rawcdn.githack.com/mrdoob/three.js/r87/examples/js/Detector.js"></script>
 
 		<script>
 
@@ -83,7 +83,7 @@
 			var modelParams = [
 				{
 					name: 'miku',
-					file: 'files/miku_v2.pmd',
+					file: 'https://rawcdn.githack.com/mrdoob/three.js/r87/examples/models/mmd/miku/miku_v2.pmd',
 					position: new THREE.Vector3( 0, -15,  0 )
 				}
 			];
@@ -100,10 +100,10 @@
 					name: 'bow',
 					motions: [
 						{
-							files: [ 'files/assets/vmd/imas/azusa_bow1.vmd', 'files/assets/vmd/imas/mouth1.vmd', 'files/assets/vmd/imas/face23.vmd' ]
+							files: [ 'assets/vmd/imas/azusa_bow1.vmd', 'assets/vmd/imas/mouth1.vmd', 'assets/vmd/imas/face23.vmd' ]
 						},
 						{
-							files: [ 'files/assets/vmd/imas/azusa_bow2.vmd', 'files/assets/vmd/imas/face23.vmd' ]
+							files: [ 'assets/vmd/imas/azusa_bow2.vmd', 'assets/vmd/imas/face23.vmd' ]
 						}
 					]
 				},
@@ -111,7 +111,7 @@
 					name: 'hair',
 					motions: [
 						{
-							files: [ 'files/assets/vmd/imas/makoto_hair.vmd', 'files/assets/vmd/imas/face23.vmd' ]
+							files: [ 'assets/vmd/imas/makoto_hair.vmd', 'assets/vmd/imas/face23.vmd' ]
 						}
 					]
 				},
@@ -119,10 +119,10 @@
 					name: 'mouth',
 					motions: [
 						{
-							files: [ 'files/assets/vmd/imas/yukiho_mouth1.vmd', 'files/assets/vmd/imas/mouth1.vmd', 'files/assets/vmd/imas/face23.vmd' ]
+							files: [ 'assets/vmd/imas/yukiho_mouth1.vmd', 'assets/vmd/imas/mouth1.vmd', 'assets/vmd/imas/face23.vmd' ]
 						},
 						{
-							files: [ 'files/assets/vmd/imas/yukiho_mouth2.vmd', 'files/assets/vmd/imas/face23.vmd' ]
+							files: [ 'assets/vmd/imas/yukiho_mouth2.vmd', 'assets/vmd/imas/face23.vmd' ]
 						}
 					]
 				},
@@ -130,10 +130,10 @@
 					name: 'rise_right_hand',
 					motions: [
 						{
-							files: [ 'files/assets/vmd/imas/yayoi_right_hand_rise1.vmd', 'files/assets/vmd/imas/mouth1.vmd', 'files/assets/vmd/imas/face24.vmd' ]
+							files: [ 'assets/vmd/imas/yayoi_right_hand_rise1.vmd', 'assets/vmd/imas/mouth1.vmd', 'assets/vmd/imas/face24.vmd' ]
 						},
 						{
-							files: [ 'files/assets/vmd/imas/yayoi_right_hand_rise2.vmd', 'files/assets/vmd/imas/face24.vmd' ]
+							files: [ 'assets/vmd/imas/yayoi_right_hand_rise2.vmd', 'assets/vmd/imas/face24.vmd' ]
 						}
 					]
 				},
@@ -141,20 +141,20 @@
 					name: 'left_hand',
 					motions: [
 						{
-							files: [ 'files/assets/vmd/imas/ritsuko_left_hand1.vmd', 'files/assets/vmd/imas/mouth1.vmd', 'files/assets/vmd/imas/face24.vmd' ]
+							files: [ 'assets/vmd/imas/ritsuko_left_hand1.vmd', 'assets/vmd/imas/mouth1.vmd', 'assets/vmd/imas/face24.vmd' ]
 						},
 						{
-							files: [ 'files/assets/vmd/imas/ritsuko_left_hand2.vmd', 'files/assets/vmd/imas/face24.vmd' ]
+							files: [ 'assets/vmd/imas/ritsuko_left_hand2.vmd', 'assets/vmd/imas/face24.vmd' ]
 						}
 					]
 				},				{
 					name: 'surprise',
 					motions: [
 						{
-							files: [ 'files/assets/vmd/imas/makoto_surprise1.vmd', 'files/assets/vmd/imas/mouth1.vmd', 'files/assets/vmd/imas/face16.vmd' ]
+							files: [ 'assets/vmd/imas/makoto_surprise1.vmd', 'assets/vmd/imas/mouth1.vmd', 'assets/vmd/imas/face16.vmd' ]
 						},
 						{
-							files: [ 'files/assets/vmd/imas/makoto_surprise2.vmd', 'files/assets/vmd/imas/face16.vmd' ]
+							files: [ 'assets/vmd/imas/makoto_surprise2.vmd', 'assets/vmd/imas/face16.vmd' ]
 						}
 					]
 				},
@@ -162,10 +162,10 @@
 					name: 'guard',
 					motions: [
 						{
-							files: [ 'files/assets/vmd/imas/makoto_guard1.vmd', 'files/assets/vmd/imas/mouth1.vmd', 'files/assets/vmd/imas/face22.vmd' ]
+							files: [ 'assets/vmd/imas/makoto_guard1.vmd', 'assets/vmd/imas/mouth1.vmd', 'assets/vmd/imas/face22.vmd' ]
 						},
 						{
-							files: [ 'files/assets/vmd/imas/makoto_guard2.vmd', 'files/assets/vmd/imas/face22.vmd' ]
+							files: [ 'assets/vmd/imas/makoto_guard2.vmd', 'assets/vmd/imas/face22.vmd' ]
 						}
 					]
 				}
